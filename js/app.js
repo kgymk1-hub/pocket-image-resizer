@@ -10,10 +10,13 @@
   const sourceFileSize = document.getElementById("sourceFileSize");
   const sourceSize = document.getElementById("sourceSize");
   const outputSize = document.getElementById("outputSize");
+  const outputFormat = document.getElementById("outputFormat");
+  const outputMode = document.getElementById("outputMode");
   const widthInput = document.getElementById("widthInput");
   const heightInput = document.getElementById("heightInput");
   const lockAspectInput = document.getElementById("lockAspectInput");
   const ratioFilterInput = document.getElementById("ratioFilterInput");
+  const quickPresetGroups = document.getElementById("quickPresetGroups");
   const presetGroups = document.getElementById("presetGroups");
   const resizeButton = document.getElementById("resizeButton");
   const iconSetButton = document.getElementById("iconSetButton");
@@ -26,6 +29,8 @@
   const useCropRatioInput = document.getElementById("useCropRatioInput");
   const cropRatioControls = document.getElementById("cropRatioControls");
   const cropRatioSelect = document.getElementById("cropRatioSelect");
+  const jpegWarning = document.getElementById("jpegWarning");
+  const cropRatioWarning = document.getElementById("cropRatioWarning");
 
   let currentImageData = null;
   let currentObjectUrl = null;
@@ -51,7 +56,10 @@
 
   function updateOutputSize() {
     const { width, height } = readSize();
-    outputSize.textContent = Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0 ? `${width} × ${height} px` : "----";
+    const valid = Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0;
+    outputSize.textContent = valid ? `${width} × ${height} px` : "----";
+    outputFormat.textContent = formatSelect.value.toUpperCase();
+    outputMode.textContent = selectedRadio("resizeMode", "cover") === "cover" ? "中央トリミング" : "余白あり";
     updateActivePreset();
   }
 
@@ -120,14 +128,20 @@
 
   function renderPresets() {
     const source = currentImageData;
-    const presets = ratioFilterInput.checked && source
-      ? window.PresetService.filterPresetsBySourceRatio(window.PresetService.OUTPUT_PRESETS, source.width, source.height)
-      : window.PresetService.OUTPUT_PRESETS;
+    const allPresets = window.PresetService.OUTPUT_PRESETS;
+    const quickPresets = allPresets.filter((preset) => preset.category === "favorite");
+    const filteredPresets = ratioFilterInput.checked && source
+      ? window.PresetService.filterPresetsBySourceRatio(allPresets, source.width, source.height)
+      : allPresets;
+    const detailPresets = filteredPresets.filter((preset) => preset.category !== "favorite");
+    const hasNoMatchingPresets = Boolean(ratioFilterInput.checked && source && filteredPresets.length === 0);
+
+    quickPresetGroups.textContent = "";
+    quickPresets.forEach((preset) => quickPresetGroups.appendChild(createPresetButton(preset)));
 
     presetGroups.textContent = "";
-    window.PresetService.getPresetsByCategory(presets).forEach((group, index) => {
+    window.PresetService.getPresetsByCategory(detailPresets).forEach((group) => {
       const details = document.createElement("details");
-      details.open = group.category === "favorite" || index === 0;
       const summary = document.createElement("summary");
       summary.textContent = group.label;
       const row = document.createElement("div");
@@ -137,14 +151,14 @@
       presetGroups.appendChild(details);
     });
 
-    if (ratioFilterInput.checked && source && presets.length === 0) {
+    if (hasNoMatchingPresets) {
       const empty = document.createElement("p");
       empty.className = "empty-presets";
       empty.textContent = "元画像に近い比率のプリセットがありません。すべて表示に戻すか、カスタムサイズを指定してください。";
       presetGroups.appendChild(empty);
-      setMessage(empty.textContent);
     }
     updateActivePreset();
+    return hasNoMatchingPresets;
   }
 
   function createPresetButton(preset) {
@@ -154,13 +168,20 @@
     button.dataset.presetId = preset.id;
     button.dataset.width = preset.width;
     button.dataset.height = preset.height;
-    button.innerHTML = `<span>${preset.label}</span><small>${preset.usage}</small>`;
+    const label = document.createElement("span");
+    label.textContent = preset.label;
+    const usage = document.createElement("small");
+    usage.textContent = preset.usage;
+    button.append(label, usage);
     return button;
   }
 
   function updateActivePreset() {
     document.querySelectorAll(".preset-button").forEach((button) => {
-      button.classList.toggle("active", button.dataset.presetId === selectedPresetId);
+      const preset = window.PresetService.OUTPUT_PRESETS.find((item) => item.id === button.dataset.presetId);
+      const { width, height } = readSize();
+      const isActive = preset && button.dataset.presetId === selectedPresetId && width === preset.width && height === preset.height;
+      button.classList.toggle("active", isActive);
     });
   }
 
@@ -168,11 +189,14 @@
     const isContain = selectedRadio("resizeMode", "cover") === "contain";
     backgroundOptions.classList.toggle("hidden", !isContain);
     qualityOptions.classList.toggle("hidden", formatSelect.value === "png");
+    jpegWarning.classList.toggle("hidden", formatSelect.value !== "jpeg");
     cropRatioSection.classList.toggle("hidden", isContain);
     cropRatioDisabledHelp.classList.toggle("hidden", !isContain);
     cropRatioControls.classList.toggle("hidden", !useCropRatioInput.checked || isContain);
+    cropRatioWarning.classList.toggle("hidden", !useCropRatioInput.checked || isContain);
     useCropRatioInput.disabled = isContain;
     cropRatioSelect.disabled = isContain || !useCropRatioInput.checked || !currentImageData;
+    updateOutputSize();
   }
 
   function syncAspect(changed) {
@@ -211,8 +235,12 @@
       sourceSize.textContent = `${currentImageData.width} × ${currentImageData.height} px`;
       updateOutputSize();
       updateConditionalOptions();
-      renderPresets();
-      setMessage("画像を読み込みました。", true);
+      const hasNoMatchingPresets = renderPresets();
+      if (hasNoMatchingPresets) {
+        setMessage("元画像に近い比率のプリセットがありません。すべて表示に戻すか、カスタムサイズを指定してください。");
+      } else {
+        setMessage("画像を読み込みました。", true);
+      }
     } catch (error) {
       currentImageData = null;
       previewImage.removeAttribute("src");
@@ -303,17 +331,22 @@
 
   function bindEvents() {
     imageInput.addEventListener("change", handleImageSelection);
+    quickPresetGroups.addEventListener("click", handlePresetClick);
     presetGroups.addEventListener("click", handlePresetClick);
     widthInput.addEventListener("input", () => handleSizeInput("width"));
     heightInput.addEventListener("input", () => handleSizeInput("height"));
     lockAspectInput.addEventListener("change", saveSettings);
-    ratioFilterInput.addEventListener("change", () => { renderPresets(); saveSettings(); });
+    ratioFilterInput.addEventListener("change", () => {
+      const hasNoMatchingPresets = renderPresets();
+      saveSettings();
+      setMessage(hasNoMatchingPresets ? "元画像に近い比率のプリセットがありません。すべて表示に戻すか、カスタムサイズを指定してください。" : "");
+    });
     useCropRatioInput.addEventListener("change", () => { updateConditionalOptions(); saveSettings(); });
     cropRatioSelect.addEventListener("change", saveSettings);
     document.querySelectorAll('input[name="resizeMode"], input[name="backgroundColor"], input[name="quality"]').forEach((input) => {
       input.addEventListener("change", () => { updateConditionalOptions(); saveSettings(); setMessage(""); });
     });
-    formatSelect.addEventListener("change", () => { updateConditionalOptions(); saveSettings(); });
+    formatSelect.addEventListener("change", () => { updateConditionalOptions(); saveSettings(); setMessage(""); });
     resizeButton.addEventListener("click", handleResize);
     iconSetButton.addEventListener("click", handleIconSetSave);
   }
