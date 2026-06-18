@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pocket Image Resizer</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>Pocket Image Resizer</h1>
+      <p>画像を選んで、指定サイズのPNGにリサイズします。</p>
+    </header>
+
+    <section class="card">
+      <label class="file-button">
+        画像を選択
+        <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/*" />
+      </label>
+
+      <div id="message" class="message" aria-live="polite"></div>
+
+      <div id="previewArea" class="preview-area hidden">
+        <img id="previewImage" alt="選択した画像のプレビュー" />
+      </div>
+
+      <div class="info-grid">
+        <div>
+          <span class="info-label">元画像</span>
+          <span id="sourceSize">----</span>
+        </div>
+        <div>
+          <span class="info-label">出力</span>
+          <span id="outputSize">----</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>サイズ</h2>
+
+      <div class="preset-row">
+        <button type="button" class="preset-button" data-width="192" data-height="192">192×192</button>
+        <button type="button" class="preset-button" data-width="512" data-height="512">512×512</button>
+        <button type="button" class="preset-button" data-width="1024" data-height="1024">1024×1024</button>
+      </div>
+
+      <div class="input-row">
+        <label>
+          幅
+          <input id="widthInput" type="number" min="1" max="4096" inputmode="numeric" value="512" />
+        </label>
+        <label>
+          高さ
+          <input id="heightInput" type="number" min="1" max="4096" inputmode="numeric" value="512" />
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>リサイズ方法</h2>
+
+      <label class="radio-line">
+        <input type="radio" name="resizeMode" value="cover" checked />
+        中央トリミング
+      </label>
+
+      <label class="radio-line">
+        <input type="radio" name="resizeMode" value="contain" />
+        余白あり
+      </label>
+
+      <div id="backgroundOptions" class="background-options hidden">
+        <span>余白色</span>
+        <label><input type="radio" name="backgroundColor" value="transparent" checked />透明</label>
+        <label><input type="radio" name="backgroundColor" value="white" />白</label>
+        <label><input type="radio" name="backgroundColor" value="black" />黒</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <button id="resizeButton" type="button" class="primary-button">PNGで保存</button>
+      <p class="note">保存名は resized_幅x高さ.png になります。</p>
+    </section>
+  </main>
+
+  <script src="js/image-loader.js"></script>
+  <script src="js/resize-service.js"></script>
+  <script src="js/file-service.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
