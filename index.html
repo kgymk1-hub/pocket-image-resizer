@@ -17,17 +17,9 @@
     </header>
 
     <section class="card">
-      <label class="file-button">
-        画像を選択
-        <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" />
-      </label>
-
+      <label class="file-button">画像を選択<input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" /></label>
       <div id="message" class="message" aria-live="polite"></div>
-
-      <div id="previewArea" class="preview-area hidden">
-        <img id="previewImage" alt="選択した画像のプレビュー" />
-      </div>
-
+      <div id="previewArea" class="preview-area hidden"><img id="previewImage" alt="選択した画像のプレビュー" /></div>
       <div class="info-grid">
         <div><span class="info-label">元ファイル名</span><span id="sourceName">----</span></div>
         <div><span class="info-label">元ファイルサイズ</span><span id="sourceFileSize">----</span></div>
@@ -37,21 +29,14 @@
     </section>
 
     <section class="card">
-      <h2>サイズ</h2>
-      <div class="preset-row">
-        <button type="button" class="preset-button" data-width="192" data-height="192">192×192</button>
-        <button type="button" class="preset-button" data-width="512" data-height="512">512×512</button>
-        <button type="button" class="preset-button" data-width="1024" data-height="1024">1024×1024</button>
-        <button type="button" class="preset-button" data-width="1280" data-height="720">1280×720</button>
-        <button type="button" class="preset-button" data-width="1920" data-height="1080">1920×1080</button>
-      </div>
-
-      <label class="check-line"><input id="lockAspectInput" type="checkbox" checked />縦横比を固定</label>
-
+      <h2>サイズ設定</h2>
       <div class="input-row">
         <label>幅<input id="widthInput" type="number" min="1" max="4096" step="1" inputmode="numeric" value="512" /></label>
         <label>高さ<input id="heightInput" type="number" min="1" max="4096" step="1" inputmode="numeric" value="512" /></label>
       </div>
+      <label class="check-line"><input id="lockAspectInput" type="checkbox" checked />縦横比を固定</label>
+      <label class="check-line"><input id="ratioFilterInput" type="checkbox" />元画像に近い比率のプリセットだけ表示</label>
+      <div id="presetGroups" class="preset-groups"></div>
     </section>
 
     <section class="card">
@@ -60,6 +45,15 @@
       <p class="option-help">指定サイズを完全に埋めます。アイコンやサムネイル向けです。</p>
       <label class="radio-line"><input type="radio" name="resizeMode" value="contain" />余白あり</label>
       <p class="option-help">画像全体を残し、余った部分を背景で埋めます。</p>
+
+      <div id="cropRatioSection" class="option-panel">
+        <label class="check-line no-margin"><input id="useCropRatioInput" type="checkbox" />トリミング比率プリセットを使う</label>
+        <div id="cropRatioControls" class="crop-ratio-controls hidden">
+          <select id="cropRatioSelect" class="select-input"></select>
+          <p id="cropRatioHelp" class="option-help compact">切り抜き比率を指定してから、現在の出力サイズへリサイズします。</p>
+        </div>
+      </div>
+      <p id="cropRatioDisabledHelp" class="option-help hidden">余白ありモードではトリミング比率プリセットは使用できません。</p>
 
       <div id="backgroundOptions" class="inline-options hidden">
         <span>余白背景</span>
@@ -95,6 +89,7 @@
   <script src="js/resize-service.js"></script>
   <script src="js/file-service.js"></script>
   <script src="js/settings-service.js"></script>
+  <script src="js/preset-service.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

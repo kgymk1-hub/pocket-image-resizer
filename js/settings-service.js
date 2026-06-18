@@ -12,7 +12,11 @@
   }
 
   function save(settings) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn("Settings could not be saved:", error);
+    }
   }
 
   window.SettingsService = { load, save };

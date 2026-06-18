@@ -12,7 +12,7 @@
         }
 
         if (!SUPPORTED_TYPES.includes(file.type)) {
-          reject(new Error("対応していない画像形式です。PNG、JPEG、WebPを選択してください。"));
+          reject(new Error("対応していない画像形式です。"));
           return;
         }
 
@@ -34,7 +34,7 @@
 
         image.onerror = () => {
           URL.revokeObjectURL(objectUrl);
-          reject(new Error("画像読み込み失敗。別の画像で試してください。"));
+          reject(new Error("画像の読み込みに失敗しました。"));
         };
 
         image.src = objectUrl;
