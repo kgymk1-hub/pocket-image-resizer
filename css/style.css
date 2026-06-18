@@ -106,3 +106,5 @@ button:disabled, input:disabled, select:disabled { opacity: .52; cursor: not-all
 
 @media (min-width: 560px) { .preset-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } .action-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 390px) { .input-row, .info-grid, .segmented, .preset-row { grid-template-columns: 1fr; } .app { padding-inline: 10px; } }
+.current-settings { margin: 14px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--accent-soft); color: var(--accent-dark); font-size: .9rem; font-weight: 800; }
+.icon-set-help { margin: 8px 0 0; color: var(--sub); font-size: .82rem; line-height: 1.45; }

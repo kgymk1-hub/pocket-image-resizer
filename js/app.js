@@ -31,6 +31,7 @@
   const cropRatioSelect = document.getElementById("cropRatioSelect");
   const jpegWarning = document.getElementById("jpegWarning");
   const cropRatioWarning = document.getElementById("cropRatioWarning");
+  const currentSettings = document.getElementById("currentSettings");
 
   let currentImageData = null;
   let currentObjectUrl = null;
@@ -58,8 +59,11 @@
     const { width, height } = readSize();
     const valid = Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0;
     outputSize.textContent = valid ? `${width} × ${height} px` : "----";
-    outputFormat.textContent = formatSelect.value.toUpperCase();
-    outputMode.textContent = selectedRadio("resizeMode", "cover") === "cover" ? "中央トリミング" : "余白あり";
+    const formatLabel = formatSelect.value.toUpperCase();
+    const modeLabel = selectedRadio("resizeMode", "cover") === "cover" ? "中央トリミング" : "余白あり";
+    outputFormat.textContent = formatLabel;
+    outputMode.textContent = modeLabel;
+    currentSettings.textContent = `現在の設定：${formatLabel} / ${modeLabel}`;
     updateActivePreset();
   }
 
@@ -130,11 +134,11 @@
     const source = currentImageData;
     const allPresets = window.PresetService.OUTPUT_PRESETS;
     const quickPresets = allPresets.filter((preset) => preset.category === "favorite");
-    const filteredPresets = ratioFilterInput.checked && source
-      ? window.PresetService.filterPresetsBySourceRatio(allPresets, source.width, source.height)
-      : allPresets;
-    const detailPresets = filteredPresets.filter((preset) => preset.category !== "favorite");
-    const hasNoMatchingPresets = Boolean(ratioFilterInput.checked && source && filteredPresets.length === 0);
+    const allDetailPresets = allPresets.filter((preset) => preset.category !== "favorite");
+    const detailPresets = ratioFilterInput.checked && source
+      ? window.PresetService.filterPresetsBySourceRatio(allDetailPresets, source.width, source.height)
+      : allDetailPresets;
+    const hasNoMatchingPresets = Boolean(ratioFilterInput.checked && source && detailPresets.length === 0);
 
     quickPresetGroups.textContent = "";
     quickPresets.forEach((preset) => quickPresetGroups.appendChild(createPresetButton(preset)));
@@ -187,9 +191,10 @@
 
   function updateConditionalOptions() {
     const isContain = selectedRadio("resizeMode", "cover") === "contain";
-    backgroundOptions.classList.toggle("hidden", !isContain);
+    const isJpeg = formatSelect.value === "jpeg";
+    backgroundOptions.classList.toggle("hidden", !isContain && !isJpeg);
     qualityOptions.classList.toggle("hidden", formatSelect.value === "png");
-    jpegWarning.classList.toggle("hidden", formatSelect.value !== "jpeg");
+    jpegWarning.classList.toggle("hidden", !isJpeg);
     cropRatioSection.classList.toggle("hidden", isContain);
     cropRatioDisabledHelp.classList.toggle("hidden", !isContain);
     cropRatioControls.classList.toggle("hidden", !useCropRatioInput.checked || isContain);
