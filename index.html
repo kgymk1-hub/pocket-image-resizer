@@ -3,20 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
   <title>Pocket Image Resizer</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <main class="app">
     <header class="app-header">
       <h1>Pocket Image Resizer</h1>
-      <p>画像を選んで、指定サイズのPNGにリサイズします。</p>
+      <p>スマホで画像を選び、指定サイズへすばやくリサイズします。</p>
     </header>
 
     <section class="card">
       <label class="file-button">
         画像を選択
-        <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/*" />
+        <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" />
       </label>
 
       <div id="message" class="message" aria-live="polite"></div>
@@ -26,53 +29,40 @@
       </div>
 
       <div class="info-grid">
-        <div>
-          <span class="info-label">元画像</span>
-          <span id="sourceSize">----</span>
-        </div>
-        <div>
-          <span class="info-label">出力</span>
-          <span id="outputSize">----</span>
-        </div>
+        <div><span class="info-label">元ファイル名</span><span id="sourceName">----</span></div>
+        <div><span class="info-label">元ファイルサイズ</span><span id="sourceFileSize">----</span></div>
+        <div><span class="info-label">元画像サイズ</span><span id="sourceSize">----</span></div>
+        <div><span class="info-label">出力予定サイズ</span><span id="outputSize">----</span></div>
       </div>
     </section>
 
     <section class="card">
       <h2>サイズ</h2>
-
       <div class="preset-row">
         <button type="button" class="preset-button" data-width="192" data-height="192">192×192</button>
         <button type="button" class="preset-button" data-width="512" data-height="512">512×512</button>
         <button type="button" class="preset-button" data-width="1024" data-height="1024">1024×1024</button>
+        <button type="button" class="preset-button" data-width="1280" data-height="720">1280×720</button>
+        <button type="button" class="preset-button" data-width="1920" data-height="1080">1920×1080</button>
       </div>
 
+      <label class="check-line"><input id="lockAspectInput" type="checkbox" checked />縦横比を固定</label>
+
       <div class="input-row">
-        <label>
-          幅
-          <input id="widthInput" type="number" min="1" max="4096" inputmode="numeric" value="512" />
-        </label>
-        <label>
-          高さ
-          <input id="heightInput" type="number" min="1" max="4096" inputmode="numeric" value="512" />
-        </label>
+        <label>幅<input id="widthInput" type="number" min="1" max="4096" step="1" inputmode="numeric" value="512" /></label>
+        <label>高さ<input id="heightInput" type="number" min="1" max="4096" step="1" inputmode="numeric" value="512" /></label>
       </div>
     </section>
 
     <section class="card">
       <h2>リサイズ方法</h2>
+      <label class="radio-line"><input type="radio" name="resizeMode" value="cover" checked />中央トリミング</label>
+      <p class="option-help">指定サイズを完全に埋めます。アイコンやサムネイル向けです。</p>
+      <label class="radio-line"><input type="radio" name="resizeMode" value="contain" />余白あり</label>
+      <p class="option-help">画像全体を残し、余った部分を背景で埋めます。</p>
 
-      <label class="radio-line">
-        <input type="radio" name="resizeMode" value="cover" checked />
-        中央トリミング
-      </label>
-
-      <label class="radio-line">
-        <input type="radio" name="resizeMode" value="contain" />
-        余白あり
-      </label>
-
-      <div id="backgroundOptions" class="background-options hidden">
-        <span>余白色</span>
+      <div id="backgroundOptions" class="inline-options hidden">
+        <span>余白背景</span>
         <label><input type="radio" name="backgroundColor" value="transparent" checked />透明</label>
         <label><input type="radio" name="backgroundColor" value="white" />白</label>
         <label><input type="radio" name="backgroundColor" value="black" />黒</label>
@@ -80,14 +70,31 @@
     </section>
 
     <section class="card">
-      <button id="resizeButton" type="button" class="primary-button">PNGで保存</button>
-      <p class="note">保存名は resized_幅x高さ.png になります。</p>
+      <h2>保存形式</h2>
+      <select id="formatSelect" class="select-input">
+        <option value="png">PNG</option>
+        <option value="jpeg">JPEG</option>
+        <option value="webp">WebP</option>
+      </select>
+      <div id="qualityOptions" class="inline-options hidden">
+        <span>品質</span>
+        <label><input type="radio" name="quality" value="0.6" />低</label>
+        <label><input type="radio" name="quality" value="0.85" checked />標準</label>
+        <label><input type="radio" name="quality" value="0.95" />高</label>
+      </div>
+    </section>
+
+    <section class="card sticky-actions">
+      <button id="resizeButton" type="button" class="primary-button">このサイズで保存</button>
+      <button id="iconSetButton" type="button" class="secondary-button">アイコンセット保存</button>
+      <p class="note">元画像名にサイズを付けて保存します。</p>
     </section>
   </main>
 
   <script src="js/image-loader.js"></script>
   <script src="js/resize-service.js"></script>
   <script src="js/file-service.js"></script>
+  <script src="js/settings-service.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
