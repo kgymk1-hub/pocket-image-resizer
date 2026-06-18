@@ -53,7 +53,7 @@
       ratioFilter: typeof raw.ratioFilter === "boolean" ? raw.ratioFilter : DEFAULTS.ratioFilter,
       useCropRatio: typeof raw.useCropRatio === "boolean" ? raw.useCropRatio : DEFAULTS.useCropRatio,
       cropRatioPresetId: validCropRatioId(raw.cropRatioPresetId) ? raw.cropRatioPresetId : DEFAULTS.cropRatioPresetId,
-      outputPresetId: validOutputPresetId(raw.outputPresetId) ? raw.outputPresetId : DEFAULTS.outputPresetId
+      outputPresetId: raw.outputPresetId === null ? null : (validOutputPresetId(raw.outputPresetId) ? raw.outputPresetId : DEFAULTS.outputPresetId)
     };
   }
 

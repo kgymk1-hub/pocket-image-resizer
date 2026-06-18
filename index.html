@@ -48,10 +48,12 @@
       <label class="check-line"><input id="lockAspectInput" type="checkbox" checked />縦横比を固定</label>
       <h3 class="subheading">よく使うプリセット</h3>
       <div id="quickPresetGroups" class="preset-row quick-presets"></div>
+      <p id="currentSettings" class="current-settings">現在の設定：PNG / 中央トリミング</p>
       <div class="action-grid">
         <button id="resizeButton" type="button" class="primary-button">このサイズで保存</button>
         <button id="iconSetButton" type="button" class="secondary-button">アイコンセット保存</button>
       </div>
+      <p class="icon-set-help">192×192 / 512×512 / 1024×1024 をまとめて保存します。</p>
       <p class="note">保存名は「元画像名_幅x高さ.拡張子」です。</p>
     </section>
 
@@ -60,8 +62,8 @@
         <h2 id="presetHeading">詳細プリセット</h2>
         <p>大量のプリセットは折りたたみで整理しています。</p>
       </div>
-      <label class="check-line filter-line"><input id="ratioFilterInput" type="checkbox" />元画像に近い比率だけ表示</label>
-      <p class="option-help compact">元画像と近い縦横比のプリセットだけに絞り込みます。画像未選択時は全表示です。</p>
+      <label class="check-line filter-line"><input id="ratioFilterInput" type="checkbox" />詳細プリセットを元画像に近い比率だけ表示</label>
+      <p class="option-help compact">詳細プリセットを、元画像と近い縦横比だけに絞り込みます。よく使うプリセットは常に表示します。</p>
       <details class="preset-details">
         <summary>詳細プリセットを表示</summary>
         <div id="presetGroups" class="preset-groups"></div>
@@ -86,7 +88,7 @@
       <p id="cropRatioDisabledHelp" class="notice hidden">余白ありモードではトリミング比率プリセットは使用できません。</p>
 
       <div id="backgroundOptions" class="inline-options hidden">
-        <span>余白背景</span>
+        <span>背景色</span>
         <label><input type="radio" name="backgroundColor" value="transparent" checked />透明</label>
         <label><input type="radio" name="backgroundColor" value="white" />白</label>
         <label><input type="radio" name="backgroundColor" value="black" />黒</label>
@@ -100,7 +102,7 @@
         <option value="jpeg">JPEG</option>
         <option value="webp">WebP</option>
       </select>
-      <p id="jpegWarning" class="notice warning hidden">JPEGでは透明部分は白背景として保存されます。</p>
+      <p id="jpegWarning" class="notice warning hidden">JPEGでは透明部分は選択した背景色で保存されます。透明指定時は白になります。</p>
       <div id="qualityOptions" class="inline-options hidden">
         <span>品質</span>
         <label><input type="radio" name="quality" value="0.6" />低</label>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-image-resizer-v3";
+const CACHE_NAME = "pocket-image-resizer-v4";
 const REQUIRED_ASSETS = [
   "./index.html",
   "./css/style.css",
@@ -21,7 +21,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       await cache.addAll(REQUIRED_ASSETS);
-      // PNGアイコンは手動追加されるため、任意キャッシュとして扱う。
+      // PNGアイコンは差し替え時にCACHE_NAME更新が必要。任意キャッシュにしてinstall失敗を防ぐ。
       await Promise.all(OPTIONAL_ASSETS.map((asset) => cache.add(asset).catch(() => undefined)));
     })
   );
