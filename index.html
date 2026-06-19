@@ -14,109 +14,64 @@
     <header class="app-header">
       <p class="eyebrow">Vanilla Web App / PWA</p>
       <h1>Pocket Image Resizer</h1>
-      <p>スマホで画像を選び、よく使うサイズへすばやくリサイズします。</p>
+      <p>スマホで画像を選び、1枚ずつ細かく調整するか、複数枚を共通設定でまとめて変換できます。</p>
     </header>
-
     <div id="message" class="message" aria-live="polite"></div>
+    <nav class="top-tabs" aria-label="変換モード">
+      <button id="singleTab" class="tab active" type="button">1枚変換</button>
+      <button id="batchTab" class="tab" type="button">一括変換</button>
+    </nav>
 
-    <section class="card hero-card" aria-labelledby="imageHeading">
-      <div class="section-title">
-        <h2 id="imageHeading">1. 画像を選択</h2>
-        <p>PNG / JPEG / WebP に対応</p>
-      </div>
-      <label class="file-button">画像を選択<input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" /></label>
-      <div id="previewArea" class="preview-area hidden"><img id="previewImage" alt="選択した画像のプレビュー" /></div>
-      <div class="info-grid" aria-label="画像と出力の情報">
-        <div><span class="info-label">元画像</span><span id="sourceSize">----</span></div>
-        <div><span class="info-label">元ファイル</span><span id="sourceName">----</span></div>
-        <div><span class="info-label">元サイズ</span><span id="sourceFileSize">----</span></div>
-        <div><span class="info-label">出力</span><span id="outputSize">----</span></div>
-        <div><span class="info-label">形式</span><span id="outputFormat">PNG</span></div>
-        <div><span class="info-label">モード</span><span id="outputMode">中央トリミング</span></div>
-      </div>
-    </section>
-
-    <section class="card" aria-labelledby="quickHeading">
-      <div class="section-title">
-        <h2 id="quickHeading">2. クイック設定</h2>
-        <p>サイズを決めたらすぐ保存できます。</p>
-      </div>
-      <div class="input-row">
-        <label>幅<input id="widthInput" type="number" min="1" max="4096" step="1" inputmode="numeric" value="512" /></label>
-        <label>高さ<input id="heightInput" type="number" min="1" max="4096" step="1" inputmode="numeric" value="512" /></label>
-      </div>
-      <label class="check-line"><input id="lockAspectInput" type="checkbox" checked />縦横比を固定</label>
-      <h3 class="subheading">よく使うプリセット</h3>
-      <div id="quickPresetGroups" class="preset-row quick-presets"></div>
-      <p id="currentSettings" class="current-settings">現在の設定：PNG / 中央トリミング</p>
-      <div class="action-grid">
-        <button id="resizeButton" type="button" class="primary-button">このサイズで保存</button>
-        <button id="iconSetButton" type="button" class="secondary-button">アイコンセット保存</button>
-      </div>
-      <p class="icon-set-help">192×192 / 512×512 / 1024×1024 をまとめて保存します。</p>
-      <p class="note">保存名は「元画像名_幅x高さ.拡張子」です。</p>
-    </section>
-
-    <section class="card" aria-labelledby="presetHeading">
-      <div class="section-title">
-        <h2 id="presetHeading">詳細プリセット</h2>
-        <p>大量のプリセットは折りたたみで整理しています。</p>
-      </div>
-      <label class="check-line filter-line"><input id="ratioFilterInput" type="checkbox" />詳細プリセットを元画像に近い比率だけ表示</label>
-      <p class="option-help compact">詳細プリセットを、元画像と近い縦横比だけに絞り込みます。よく使うプリセットは常に表示します。</p>
-      <details class="preset-details">
-        <summary>詳細プリセットを表示</summary>
-        <div id="presetGroups" class="preset-groups"></div>
-      </details>
-    </section>
-
-    <section class="card" aria-labelledby="modeHeading">
-      <div class="section-title"><h2 id="modeHeading">リサイズ方法</h2></div>
-      <div class="segmented">
-        <label><input type="radio" name="resizeMode" value="cover" checked /><span>中央トリミング</span></label>
-        <label><input type="radio" name="resizeMode" value="contain" /><span>余白あり</span></label>
-      </div>
-      <p class="option-help compact">中央トリミングは指定サイズを完全に埋め、余白ありは元画像全体を残します。</p>
-
-      <div id="cropRatioSection" class="option-panel">
-        <label class="check-line no-margin"><input id="useCropRatioInput" type="checkbox" />トリミング比率プリセットを使う</label>
-        <div id="cropRatioControls" class="crop-ratio-controls hidden">
-          <select id="cropRatioSelect" class="select-input"></select>
-          <p id="cropRatioWarning" class="notice warning">選択した比率で切り抜いた後、現在の出力サイズへ変換します。比率が異なる場合は引き伸ばされます。</p>
+    <section id="singlePanel" class="mode-panel">
+      <section class="card">
+        <div class="section-title"><h2>画像選択・プレビュー</h2><p>元画像は保持され、「この結果を使って続ける」で作業中画像だけを更新します。</p></div>
+        <label class="file-button">画像を選択<input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+        <canvas id="singlePreview" class="preview-canvas" aria-label="1枚変換プレビュー"></canvas>
+        <div id="singleNudge" class="nudge-panel"></div>
+        <div class="info-grid">
+          <div><span class="info-label">作業中画像</span><span id="singleSourceSize">----</span></div>
+          <div><span class="info-label">元ファイル</span><span id="singleSourceName">----</span></div>
+          <div><span class="info-label">元サイズ</span><span id="singleFileSize">----</span></div>
+          <div><span class="info-label">出力予定</span><span id="singleOutputSize">----</span></div>
         </div>
-      </div>
-      <p id="cropRatioDisabledHelp" class="notice hidden">余白ありモードではトリミング比率プリセットは使用できません。</p>
+      </section>
 
-      <div id="backgroundOptions" class="inline-options hidden">
-        <span>背景色</span>
-        <label><input type="radio" name="backgroundColor" value="transparent" checked />透明</label>
-        <label><input type="radio" name="backgroundColor" value="white" />白</label>
-        <label><input type="radio" name="backgroundColor" value="black" />黒</label>
-      </div>
+      <section class="card">
+        <div class="segmented"><label><input type="radio" name="singleMode" value="resize" checked><span>リサイズ</span></label><label><input type="radio" name="singleMode" value="crop"><span>トリミング</span></label></div>
+        <p id="singleModeHelp" class="notice"></p>
+      </section>
+
+      <section id="singleResizeControls" class="card">
+        <div class="section-title"><h2>リサイズ：サイズ設定</h2><p>指定した幅・高さに変換します。</p></div>
+        <div class="radio-list" id="singleResizeMethod"></div>
+        <div class="input-row"><label>幅<input id="singleResizeWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleResizeHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
+        <p id="resizeWarning" class="notice warning hidden"></p>
+        <h3>よく使うサイズ</h3><div id="singleQuickPresets" class="preset-row"></div>
+        <h3>詳細プリセット</h3><div id="singleDetailPresets" class="preset-groups"></div>
+        <p id="singlePresetEmpty" class="empty-presets hidden">元画像の縦横比に合うプリセットがありません。幅または高さを直接入力してください。</p>
+      </section>
+
+      <section id="singleCropControls" class="card hidden">
+        <div class="section-title"><h2>トリミング：サイズ設定</h2><p>画像を拡大縮小せず、切り抜きまたは余白付与で出力範囲を作ります。</p></div>
+        <label>トリミング方向<select id="cropDirection" class="select-input"><option value="both">上下左右トリミング</option><option value="vertical">上下のみトリミング</option><option value="horizontal">左右のみトリミング</option></select></label>
+        <label>縦横比指定<select id="cropRatio" class="select-input"></select></label>
+        <div class="input-row"><label>幅<input id="singleCropWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleCropHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
+        <h3>サイズプリセット</h3><div id="singleCropPresets" class="preset-groups"></div>
+      </section>
+
+      <section id="singlePositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2><p>必要な方向だけ表示します。プレビュー上のドラッグでも調整できます。</p></div><div id="singlePositionButtons"></div></section>
+      <section class="card"><div class="section-title"><h2>保存設定</h2></div><div id="commonSaveSingle"></div><div class="action-grid"><button id="singleSaveButton" class="primary-button" type="button">この設定で保存</button><button id="continueButton" class="secondary-button" type="button">この結果を使って続ける</button><button id="resetOriginalButton" class="secondary-button" type="button">元画像に戻す</button></div></section>
     </section>
 
-    <section class="card" aria-labelledby="formatHeading">
-      <div class="section-title"><h2 id="formatHeading">保存形式</h2></div>
-      <select id="formatSelect" class="select-input">
-        <option value="png">PNG</option>
-        <option value="jpeg">JPEG</option>
-        <option value="webp">WebP</option>
-      </select>
-      <p id="jpegWarning" class="notice warning hidden">JPEGでは透明部分は選択した背景色で保存されます。透明指定時は白になります。</p>
-      <div id="qualityOptions" class="inline-options hidden">
-        <span>品質</span>
-        <label><input type="radio" name="quality" value="0.6" />低</label>
-        <label><input type="radio" name="quality" value="0.85" checked />標準</label>
-        <label><input type="radio" name="quality" value="0.95" />高</label>
-      </div>
+    <section id="batchPanel" class="mode-panel hidden">
+      <section class="card"><div class="section-title"><h2>複数画像選択</h2><p>一括変換では共通設定を全画像へ適用します。</p></div><label class="file-button">複数画像を選択<input id="batchInput" type="file" multiple accept="image/png,image/jpeg,image/webp"></label><canvas id="batchPreview" class="preview-canvas"></canvas><div class="pager"><button id="batchPrev" type="button" class="secondary-button">前へ</button><span id="batchCounter">0 / 0</span><button id="batchNext" type="button" class="secondary-button">次へ</button></div><div class="info-grid"><div><span class="info-label">選択枚数</span><span id="batchCount">0枚</span></div><div><span class="info-label">ファイル名</span><span id="batchName">----</span></div><div><span class="info-label">元画像サイズ</span><span id="batchSourceSize">----</span></div><div><span class="info-label">出力予定</span><span id="batchOutputSize">----</span></div></div></section>
+      <section class="card"><div class="segmented"><label><input type="radio" name="batchMode" value="resize" checked><span>リサイズ</span></label><label><input type="radio" name="batchMode" value="crop"><span>トリミング</span></label></div><p id="batchModeHelp" class="notice"></p></section>
+      <section class="card"><div class="section-title"><h2>共通設定</h2><p>一括変換ではフリー調整や元画像比率フィルタは使いません。</p></div><div id="batchResizeMethod" class="radio-list"></div><div class="input-row"><label>幅<input id="batchWidth" type="number" min="1" max="4096" value="512" inputmode="numeric"></label><label>高さ<input id="batchHeight" type="number" min="1" max="4096" value="512" inputmode="numeric"></label></div><h3>サイズプリセット</h3><div id="batchPresets" class="preset-groups"></div></section>
+      <section id="batchPositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2></div><div id="batchPositionButtons"></div></section>
+      <section class="card"><div class="section-title"><h2>保存設定</h2></div><div id="commonSaveBatch"></div><p class="notice warning">連続ダウンロードは最大10枚までです。枚数が多い場合はZIP保存を使ってください。ブラウザによっては複数ダウンロードがブロックされる場合があります。</p><div class="action-grid"><button id="zipButton" class="primary-button" type="button">ZIPで保存</button><button id="multiDownloadButton" class="secondary-button" type="button">連続ダウンロード</button></div></section>
     </section>
   </main>
-
-  <script src="js/image-loader.js"></script>
-  <script src="js/resize-service.js"></script>
-  <script src="js/file-service.js"></script>
-  <script src="js/settings-service.js"></script>
-  <script src="js/preset-service.js"></script>
-  <script src="js/app.js"></script>
+  <script src="libs/jszip.min.js"></script>
+  <script src="js/image-loader.js"></script><script src="js/resize-service.js"></script><script src="js/file-service.js"></script><script src="js/settings-service.js"></script><script src="js/preset-service.js"></script><script src="js/app.js"></script>
 </body>
 </html>

@@ -4,6 +4,11 @@
   const SUPPORTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
   window.ImageLoader = {
+    loadFromBlob(blob, fileName) {
+      const file = new File([blob], fileName || "image", { type: blob.type || "image/png" });
+      return this.loadFromFile(file);
+    },
+
     loadFromFile(file) {
       return new Promise((resolve, reject) => {
         if (!file) {
