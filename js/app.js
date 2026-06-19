@@ -166,8 +166,13 @@
         const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
         setMessage(`ZIP作成中... ${total} / ${total}`);
         await yieldToBrowser();
+        let lastZipPercent = -1;
         const zipBlob = await z.generateAsync({ type: "blob" }, (metadata) => {
-          if (metadata.percent) setMessage(`ZIP作成中... ${total} / ${total} (${Math.floor(metadata.percent)}%)`);
+          const percent = Math.floor(Math.max(0, Math.min(100, metadata.percent || 0)));
+          if (percent !== lastZipPercent) {
+            lastZipPercent = percent;
+            setMessage(`ZIP作成中... ${total} / ${total} (${percent}%)`);
+          }
         });
         await yieldToBrowser();
         window.FileService.downloadBlob(zipBlob, `converted_images_${date}.zip`);
