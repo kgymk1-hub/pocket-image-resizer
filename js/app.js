@@ -4,6 +4,8 @@
     ZIP_LIMIT = 30,
     MULTI_LIMIT = 10;
   const $ = (id) => document.getElementById(id);
+  let pendingServiceWorker = null;
+  let refreshing = false;
   const message = $("message");
   const els = [
     "singleTab",
@@ -1109,7 +1111,8 @@
       setGroupBusy(busyItems, false);
     }
   }
-  function showUpdateNotice() {
+  function showUpdateNotice(newWorker) {
+    pendingServiceWorker = newWorker;
     let notice = $("swUpdateNotice");
     if (!notice) {
       notice = document.createElement("div");
@@ -1121,7 +1124,12 @@
       const reload = document.createElement("button");
       reload.type = "button";
       reload.textContent = "更新する";
-      reload.addEventListener("click", () => location.reload());
+      reload.addEventListener("click", () => {
+        if (!pendingServiceWorker) return;
+        text.textContent = "更新中...";
+        reload.disabled = true;
+        pendingServiceWorker.postMessage({ action: "skipWaiting" });
+      });
       const close = document.createElement("button");
       close.type = "button";
       close.className = "update-notice-close";
@@ -1129,14 +1137,27 @@
       close.addEventListener("click", () => notice.remove());
       notice.append(text, reload, close);
       document.body.appendChild(notice);
+    } else {
+      const text = notice.querySelector("span");
+      const reload = notice.querySelector("button");
+      if (text) text.textContent = "新しいバージョンがあります。";
+      if (reload) reload.disabled = false;
     }
     notice.classList.add("show");
   }
   function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
     navigator.serviceWorker
       .register("./service-worker.js")
       .then((registration) => {
+        if (registration.waiting) {
+          showUpdateNotice(registration.waiting);
+        }
         registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
           if (!newWorker) return;
@@ -1145,7 +1166,7 @@
               newWorker.state === "installed" &&
               navigator.serviceWorker.controller
             )
-              showUpdateNotice();
+              showUpdateNotice(newWorker);
           });
         });
       })

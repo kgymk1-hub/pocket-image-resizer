@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-image-resizer-v16-final-clean";
+const CACHE_NAME = "pocket-image-resizer-v17-sw-waiting";
 const REQUIRED_ASSETS = [
   "./index.html",
   "./css/style.css",
@@ -26,7 +26,12 @@ self.addEventListener("install", (event) => {
       await Promise.all(OPTIONAL_ASSETS.map((asset) => cache.add(asset).catch(() => undefined)));
     })
   );
-  self.skipWaiting();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.action === "skipWaiting") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {
