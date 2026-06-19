@@ -30,7 +30,7 @@
         <div id="singleNudge" class="nudge-panel"></div>
         <div class="info-grid">
           <div><span class="info-label">作業中画像</span><span id="singleSourceSize">----</span></div>
-          <div><span class="info-label">元ファイル</span><span id="singleSourceName">----</span></div>
+          <div><span class="info-label">作業中ファイル</span><span id="singleSourceName">----</span></div>
           <div><span class="info-label">元サイズ</span><span id="singleFileSize">----</span></div>
           <div><span class="info-label">出力予定</span><span id="singleOutputSize">----</span></div>
         </div>
@@ -66,7 +66,7 @@
     <section id="batchPanel" class="mode-panel hidden">
       <section class="card"><div class="section-title"><h2>複数画像選択</h2><p>一括変換では共通設定を全画像へ適用します。</p></div><label class="file-button">複数画像を選択<input id="batchInput" type="file" multiple accept="image/png,image/jpeg,image/webp"></label><canvas id="batchPreview" class="preview-canvas"></canvas><div class="pager"><button id="batchPrev" type="button" class="secondary-button">前へ</button><span id="batchCounter">0 / 0</span><button id="batchNext" type="button" class="secondary-button">次へ</button></div><div class="info-grid"><div><span class="info-label">選択枚数</span><span id="batchCount">0枚</span></div><div><span class="info-label">ファイル名</span><span id="batchName">----</span></div><div><span class="info-label">元画像サイズ</span><span id="batchSourceSize">----</span></div><div><span class="info-label">出力予定</span><span id="batchOutputSize">----</span></div></div></section>
       <section class="card"><div class="segmented"><label><input type="radio" name="batchMode" value="resize" checked><span>リサイズ</span></label><label><input type="radio" name="batchMode" value="crop"><span>トリミング</span></label></div><p id="batchModeHelp" class="notice"></p></section>
-      <section class="card"><div class="section-title"><h2>共通設定</h2><p>一括変換ではフリー調整や元画像比率フィルタは使いません。</p></div><div id="batchResizeMethod" class="radio-list"></div><div class="input-row"><label>幅<input id="batchWidth" type="number" min="1" max="4096" value="512" inputmode="numeric"></label><label>高さ<input id="batchHeight" type="number" min="1" max="4096" value="512" inputmode="numeric"></label></div><h3>サイズプリセット</h3><div id="batchPresets" class="preset-groups"></div></section>
+      <section class="card"><div class="section-title"><h2>共通設定</h2><p>一括変換ではフリー調整や元画像比率フィルタは使いません。</p></div><div id="batchResizeMethodBlock"><h3>リサイズ処理方式</h3><div id="batchResizeMethod" class="radio-list"></div></div><div class="input-row"><label>幅<input id="batchWidth" type="number" min="1" max="4096" value="512" inputmode="numeric"></label><label>高さ<input id="batchHeight" type="number" min="1" max="4096" value="512" inputmode="numeric"></label></div><h3>サイズプリセット</h3><div id="batchPresets" class="preset-groups"></div></section>
       <section id="batchPositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2></div><div id="batchPositionButtons"></div></section>
       <section class="card"><div class="section-title"><h2>保存設定</h2></div><div id="commonSaveBatch"></div><p class="notice warning">連続ダウンロードは最大10枚までです。枚数が多い場合はZIP保存を使ってください。ブラウザによっては複数ダウンロードがブロックされる場合があります。</p><div class="action-grid"><button id="zipButton" class="primary-button" type="button">ZIPで保存</button><button id="multiDownloadButton" class="secondary-button" type="button">連続ダウンロード</button></div></section>
     </section>
