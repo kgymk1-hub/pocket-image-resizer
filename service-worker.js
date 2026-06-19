@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-image-resizer-v17-sw-waiting";
+const CACHE_NAME = "pocket-image-resizer-v18-sw-claim";
 const REQUIRED_ASSETS = [
   "./index.html",
   "./css/style.css",
@@ -35,8 +35,12 @@ self.addEventListener("message", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))));
-  self.clients.claim();
+  event.waitUntil(
+    Promise.all([
+      caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))),
+      self.clients.claim()
+    ])
+  );
 });
 
 self.addEventListener("fetch", (event) => {
