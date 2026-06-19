@@ -27,7 +27,18 @@
         <div class="section-title"><h2>画像選択・プレビュー</h2><p>元画像は保持され、「この結果を使って続ける」で作業中画像だけを更新します。</p></div>
         <label class="file-button">画像を選択<input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" /></label>
         <canvas id="singlePreview" class="preview-canvas" aria-label="1枚変換プレビュー"></canvas>
-        <div id="singleNudge" class="nudge-panel"></div>
+        <div id="singlePreviewTools" class="preview-tools hidden">
+          <div id="singlePreviewPositionPanel" class="preview-position-panel hidden">
+            <p class="mini-panel-title">プレビューを見ながら位置調整</p>
+            <div id="singlePreviewPositionButtons" class="preview-position-buttons compact-grid"></div>
+            <div id="singleNudge" class="nudge-panel nudge-mini"></div>
+          </div>
+          <div id="singlePreviewSizePanel" class="preview-size-panel hidden">
+            <p class="mini-panel-title">プレビューを見ながらサイズ設定</p>
+            <div class="input-row compact-input-row"><label>幅<input id="singleMiniWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleMiniHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
+            <div id="singleMiniPresets" class="preset-row compact-preset-row"></div>
+          </div>
+        </div>
         <div class="info-grid">
           <div><span class="info-label">作業中画像</span><span id="singleSourceSize">----</span></div>
           <div><span class="info-label">作業中ファイル</span><span id="singleSourceName">----</span></div>
@@ -59,7 +70,7 @@
         <h3>サイズプリセット</h3><div id="singleCropPresets" class="preset-groups"></div>
       </section>
 
-      <section id="singlePositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2><p>必要な方向だけ表示します。プレビュー上のドラッグでも調整できます。</p></div><div id="singlePositionButtons"></div></section>
+      <section id="singlePositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2><p>1枚変換の位置プリセット、矢印、微調整はプレビュー直下へ集約しました。プレビュー上のドラッグでも調整できます。</p></div></section>
       <section class="card"><div class="section-title"><h2>保存設定</h2></div><div id="commonSaveSingle"></div><div class="action-grid"><button id="singleSaveButton" class="primary-button" type="button">この設定で保存</button><button id="continueButton" class="secondary-button" type="button">この結果を使って続ける</button><button id="resetOriginalButton" class="secondary-button" type="button">元画像に戻す</button></div></section>
     </section>
 
