@@ -10,6 +10,7 @@
     video: "動画",
     web: "ブログ・Web",
     wallpaper: "スマホ壁紙",
+    photo: "スマホ写真",
     custom: "カスタムに近い比率"
   };
 
@@ -65,6 +66,9 @@
     p("wallpaper-iphone", 1170, 2532, "wallpaper", "iPhone系目安", "19.5:9"),
     p("wallpaper-qhd", 1440, 2560, "wallpaper", "QHD縦", "9:16"),
     p("wallpaper-tall", 1440, 3200, "wallpaper", "縦長スマホ目安", "20:9"),
+
+    p("photo-phone-portrait-4624", 3468, 4624, "photo", "スマホ写真 縦", "3:4"),
+    p("photo-phone-landscape-4624", 4624, 3468, "photo", "スマホ写真 横", "4:3"),
 
     p("custom-4-3", 1024, 768, "custom", "4:3資料向け", "4:3"),
     p("custom-3-4", 768, 1024, "custom", "3:4縦向け", "3:4"),

@@ -1,12 +1,12 @@
 (() => {
   "use strict";
-  const MAX_OUTPUT_SIZE = 4096;
+  const MAX_OUTPUT_SIZE = 4624;
   const MIME_TYPES = { png: "image/png", jpeg: "image/jpeg", webp: "image/webp" };
   function validateSize(width, height) {
     if (width === "" || height === "" || width == null || height == null) throw new Error("幅と高さを入力してください。");
     if (!Number.isInteger(width) || !Number.isInteger(height)) throw new Error("幅と高さは整数で入力してください。");
     if (width < 1 || height < 1) throw new Error("幅と高さは1以上で入力してください。");
-    if (width > MAX_OUTPUT_SIZE || height > MAX_OUTPUT_SIZE) throw new Error("幅と高さは4096px以下で入力してください。");
+    if (width > MAX_OUTPUT_SIZE || height > MAX_OUTPUT_SIZE) throw new Error("幅と高さは4624px以下で入力してください。");
   }
   function bg(color, format) { if (color === "black") return "#000"; if (color === "white" || format === "jpeg") return "#fff"; return null; }
   function coverRect(sw, sh, dw, dh, x = 0.5, y = 0.5) {
