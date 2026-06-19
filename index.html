@@ -51,8 +51,8 @@
       <section id="singleResizeControls" class="card">
         <div class="section-title"><h2>リサイズ：サイズ設定</h2><p>指定した幅・高さに変換します。</p></div>
         <div class="radio-list" id="singleResizeMethod"></div>
-        <div class="input-row"><label>幅<input id="singleResizeWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleResizeHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
-        <p id="resizeWarning" class="notice warning hidden"></p>
+        <div class="input-row"><label>幅<input id="singleResizeWidth" type="number" min="1" max="4624" inputmode="numeric"></label><label>高さ<input id="singleResizeHeight" type="number" min="1" max="4624" inputmode="numeric"></label></div>
+        <p id="resizeWarning" class="notice warning hidden"></p><p class="notice warning">大きいサイズの画像は、端末によって読み込みや保存に時間がかかる場合があります。</p>
         <h3>よく使うサイズ</h3><div id="singleQuickPresets" class="preset-row"></div>
         <h3>詳細プリセット</h3><div id="singleDetailPresets" class="preset-groups"></div>
         <p id="singlePresetEmpty" class="empty-presets hidden">元画像の縦横比に合うプリセットがありません。幅または高さを直接入力してください。</p>
@@ -62,7 +62,7 @@
         <div class="section-title"><h2>トリミング：サイズ設定</h2><p>画像を拡大縮小せず、切り抜きまたは余白付与で出力範囲を作ります。</p></div>
         <label>トリミング方向<select id="cropDirection" class="select-input"><option value="both">上下左右トリミング</option><option value="vertical">上下のみトリミング</option><option value="horizontal">左右のみトリミング</option></select></label>
         <label>縦横比指定<select id="cropRatio" class="select-input"></select></label>
-        <div class="input-row"><label>幅<input id="singleCropWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleCropHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
+        <div class="input-row"><label>幅<input id="singleCropWidth" type="number" min="1" max="4624" inputmode="numeric"></label><label>高さ<input id="singleCropHeight" type="number" min="1" max="4624" inputmode="numeric"></label></div>
         <h3>サイズプリセット</h3><div id="singleCropPresets" class="preset-groups"></div>
       </section>
 
@@ -70,7 +70,7 @@
 
       <section class="card">
         <div class="section-title"><h2>プレビュー</h2><p>現在のサイズ設定・位置設定を反映します。トリミング時は元画像全体、トリミング枠、枠外暗表示を確認できます。</p></div>
-        <canvas id="singlePreview" class="preview-canvas" aria-label="1枚変換プレビュー"></canvas>
+        <canvas id="singlePreview" class="preview-canvas" aria-label="1枚変換プレビュー"></canvas><p id="singleDragHint" class="drag-hint hidden">ドラッグで位置調整できます</p>
       </section>
 
       <section id="singlePreviewPositionPanel" class="card mini-adjust-card hidden">
@@ -80,7 +80,7 @@
 
       <section id="singlePreviewSizePanel" class="card mini-adjust-card hidden">
         <div class="section-title"><h2>ミニサイズ設定</h2><p>サイズ設定パートと同じプリセットを表示します。</p></div>
-        <div class="input-row compact-input-row"><label>幅<input id="singleMiniWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleMiniHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
+        <div class="input-row compact-input-row"><label>幅<input id="singleMiniWidth" type="number" min="1" max="4624" inputmode="numeric"></label><label>高さ<input id="singleMiniHeight" type="number" min="1" max="4624" inputmode="numeric"></label></div>
         <div id="singleMiniPresets" class="preset-row compact-preset-row"></div>
       </section>
 
@@ -93,10 +93,10 @@
       <section class="card"><div class="section-title"><h2>複数画像選択</h2><p>一括変換では共通設定を全画像へ適用します。</p></div><label class="file-button">複数画像を選択<input id="batchInput" type="file" multiple accept="image/png,image/jpeg,image/webp"></label></section>
       <section id="batchOriginalCard" class="card hidden"><div class="section-title"><h2>選択画像</h2><p>現在のプレビュー対象画像を確認するための簡易表示です。設定やトリミング枠は反映しません。</p></div><canvas id="batchOriginalPreview" class="source-canvas" aria-label="一括変換の選択画像簡易表示"></canvas></section>
       <section class="card"><div class="section-title"><h2>選択画像の情報</h2></div><div class="info-grid"><div><span class="info-label">選択枚数</span><span id="batchCount">0枚</span></div><div><span class="info-label">ファイル名</span><span id="batchName">----</span></div><div><span class="info-label">元画像サイズ</span><span id="batchSourceSize">----</span></div><div><span class="info-label">出力予定</span><span id="batchOutputSize">----</span></div></div></section>
-      <section class="card"><div class="section-title"><h2>サイズ設定</h2><p>一括変換ではフリー調整や元画像比率フィルタは使いません。</p></div><div id="batchResizeMethodBlock"><h3>リサイズ処理方式</h3><div id="batchResizeMethod" class="radio-list"></div></div><div class="input-row"><label>幅<input id="batchWidth" type="number" min="1" max="4096" value="512" inputmode="numeric"></label><label>高さ<input id="batchHeight" type="number" min="1" max="4096" value="512" inputmode="numeric"></label></div><h3>サイズプリセット</h3><div id="batchPresets" class="preset-groups"></div></section>
+      <section class="card"><div class="section-title"><h2>サイズ設定</h2><p>一括変換ではフリー調整や元画像比率フィルタは使いません。</p></div><div id="batchResizeMethodBlock"><h3>リサイズ処理方式</h3><div id="batchResizeMethod" class="radio-list"></div></div><div class="input-row"><label>幅<input id="batchWidth" type="number" min="1" max="4624" value="512" inputmode="numeric"></label><label>高さ<input id="batchHeight" type="number" min="1" max="4624" value="512" inputmode="numeric"></label></div><p class="notice warning">大きいサイズの一括変換は端末負荷が高くなる場合があります。ZIP保存は最大30枚、連続ダウンロードは最大10枚です。</p><h3>サイズプリセット</h3><div id="batchPresets" class="preset-groups"></div></section>
       <section id="batchPositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2><p>横方向に調整が必要な画像では「左 / 中央 / 右」が効きます。<br>縦方向に調整が必要な画像では「上 / 中央 / 下」が効きます。</p></div><div id="batchPositionButtons"></div></section>
-      <section class="card"><div class="section-title"><h2>プレビュー</h2><p>現在の共通設定を代表画像へ反映して確認します。</p></div><canvas id="batchPreview" class="preview-canvas"></canvas></section>
       <div class="pager"><button id="batchPrev" type="button" class="secondary-button">前へ</button><span id="batchCounter">0 / 0</span><button id="batchNext" type="button" class="secondary-button">次へ</button></div>
+      <section class="card"><div class="section-title"><h2>プレビュー</h2><p>現在の共通設定を代表画像へ反映して確認します。</p></div><canvas id="batchPreview" class="preview-canvas"></canvas></section>
       <section class="card"><div class="section-title"><h2>保存設定</h2></div><div id="commonSaveBatch"></div><p class="notice warning">連続ダウンロードは最大10枚までです。枚数が多い場合はZIP保存を使ってください。ブラウザによっては複数ダウンロードがブロックされる場合があります。</p><div class="action-grid"><button id="zipButton" class="primary-button" type="button">ZIPで保存</button><button id="multiDownloadButton" class="secondary-button" type="button">連続ダウンロード</button></div></section>
     </section>
 

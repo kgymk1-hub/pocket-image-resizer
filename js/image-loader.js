@@ -2,6 +2,7 @@
   "use strict";
 
   const SUPPORTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
+  const MAX_SOURCE_SIZE = 4624;
 
   window.ImageLoader = {
     loadFromBlob(blob, fileName) {
@@ -26,6 +27,12 @@
         const image = new Image();
 
         image.onload = () => {
+          if (image.naturalWidth > MAX_SOURCE_SIZE || image.naturalHeight > MAX_SOURCE_SIZE) {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error(`画像の長辺は${MAX_SOURCE_SIZE}px以下にしてください。大きいサイズの画像は、端末によって読み込みや保存に時間がかかる場合があります。`));
+            return;
+          }
+
           resolve({
             image,
             objectUrl,
