@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-image-resizer-v13-polish";
+const CACHE_NAME = "pocket-image-resizer-v14-zip-async";
 const REQUIRED_ASSETS = [
   "./index.html",
   "./css/style.css",
