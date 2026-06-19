@@ -23,33 +23,29 @@
     </nav>
 
     <section id="singlePanel" class="mode-panel">
+      <section class="card mode-switch-card">
+        <div class="segmented"><label><input type="radio" name="singleMode" value="resize" checked><span>リサイズ</span></label><label><input type="radio" name="singleMode" value="crop"><span>トリミング</span></label></div>
+        <p id="singleModeHelp" class="notice"></p>
+      </section>
+
       <section class="card">
-        <div class="section-title"><h2>画像選択・プレビュー</h2><p>元画像は保持され、「この結果を使って続ける」で作業中画像だけを更新します。</p></div>
+        <div class="section-title"><h2>画像選択</h2><p>元画像は保持され、「この結果を使って続ける」で作業中画像だけを更新します。</p></div>
         <label class="file-button">画像を選択<input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" /></label>
-        <canvas id="singlePreview" class="preview-canvas" aria-label="1枚変換プレビュー"></canvas>
-        <div id="singlePreviewTools" class="preview-tools hidden">
-          <div id="singlePreviewPositionPanel" class="preview-position-panel hidden">
-            <p class="mini-panel-title">プレビューを見ながら位置調整</p>
-            <div id="singlePreviewPositionButtons" class="preview-position-buttons compact-grid"></div>
-            <div id="singleNudge" class="nudge-panel nudge-mini"></div>
-          </div>
-          <div id="singlePreviewSizePanel" class="preview-size-panel hidden">
-            <p class="mini-panel-title">プレビューを見ながらサイズ設定</p>
-            <div class="input-row compact-input-row"><label>幅<input id="singleMiniWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleMiniHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
-            <div id="singleMiniPresets" class="preset-row compact-preset-row"></div>
-          </div>
-        </div>
+      </section>
+
+      <section id="singleOriginalCard" class="card hidden">
+        <div class="section-title"><h2>選択画像</h2><p>元画像または作業中画像を確認するための簡易表示です。トリミング枠や位置調整は表示しません。</p></div>
+        <canvas id="singleOriginalPreview" class="source-canvas" aria-label="選択画像の簡易表示"></canvas>
+      </section>
+
+      <section class="card">
+        <div class="section-title"><h2>選択画像の情報</h2></div>
         <div class="info-grid">
           <div><span class="info-label">作業中画像</span><span id="singleSourceSize">----</span></div>
           <div><span class="info-label">作業中ファイル</span><span id="singleSourceName">----</span></div>
           <div><span class="info-label">元ファイルサイズ</span><span id="singleFileSize">----</span></div>
           <div><span class="info-label">出力予定</span><span id="singleOutputSize">----</span></div>
         </div>
-      </section>
-
-      <section class="card">
-        <div class="segmented"><label><input type="radio" name="singleMode" value="resize" checked><span>リサイズ</span></label><label><input type="radio" name="singleMode" value="crop"><span>トリミング</span></label></div>
-        <p id="singleModeHelp" class="notice"></p>
       </section>
 
       <section id="singleResizeControls" class="card">
@@ -70,17 +66,40 @@
         <h3>サイズプリセット</h3><div id="singleCropPresets" class="preset-groups"></div>
       </section>
 
-      <section id="singlePositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2><p>1枚変換の位置プリセット、矢印、微調整はプレビュー直下へ集約しました。プレビュー上のドラッグでも調整できます。</p></div></section>
+      <section id="singlePositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2><p>位置プリセットを選びます。矢印・微調整はプレビュー直下のミニ位置調整に分離しています。</p></div><div id="singlePositionButtons" class="compact-grid"></div></section>
+
+      <section class="card">
+        <div class="section-title"><h2>プレビュー</h2><p>現在のサイズ設定・位置設定を反映します。トリミング時は元画像全体、トリミング枠、枠外暗表示を確認できます。</p></div>
+        <canvas id="singlePreview" class="preview-canvas" aria-label="1枚変換プレビュー"></canvas>
+      </section>
+
+      <section id="singlePreviewPositionPanel" class="card mini-adjust-card hidden">
+        <div class="section-title"><h2>ミニ位置調整</h2><p>プレビューを見ながら矢印・微調整だけを行います。</p></div>
+        <div id="singleNudge" class="nudge-panel nudge-mini"></div>
+      </section>
+
+      <section id="singlePreviewSizePanel" class="card mini-adjust-card hidden">
+        <div class="section-title"><h2>ミニサイズ設定</h2><p>サイズ設定パートと同じプリセットを表示します。</p></div>
+        <div class="input-row compact-input-row"><label>幅<input id="singleMiniWidth" type="number" min="1" max="4096" inputmode="numeric"></label><label>高さ<input id="singleMiniHeight" type="number" min="1" max="4096" inputmode="numeric"></label></div>
+        <div id="singleMiniPresets" class="preset-row compact-preset-row"></div>
+      </section>
+
       <section class="card"><div class="section-title"><h2>保存設定</h2></div><div id="commonSaveSingle"></div><div class="action-grid"><button id="singleSaveButton" class="primary-button" type="button">この設定で保存</button><button id="continueButton" class="secondary-button" type="button">この結果を使って続ける</button><button id="resetOriginalButton" class="secondary-button" type="button">元画像に戻す</button></div></section>
     </section>
 
+
     <section id="batchPanel" class="mode-panel hidden">
-      <section class="card"><div class="section-title"><h2>複数画像選択</h2><p>一括変換では共通設定を全画像へ適用します。</p></div><label class="file-button">複数画像を選択<input id="batchInput" type="file" multiple accept="image/png,image/jpeg,image/webp"></label><canvas id="batchPreview" class="preview-canvas"></canvas><div class="pager"><button id="batchPrev" type="button" class="secondary-button">前へ</button><span id="batchCounter">0 / 0</span><button id="batchNext" type="button" class="secondary-button">次へ</button></div><div class="info-grid"><div><span class="info-label">選択枚数</span><span id="batchCount">0枚</span></div><div><span class="info-label">ファイル名</span><span id="batchName">----</span></div><div><span class="info-label">元画像サイズ</span><span id="batchSourceSize">----</span></div><div><span class="info-label">出力予定</span><span id="batchOutputSize">----</span></div></div></section>
       <section class="card"><div class="segmented"><label><input type="radio" name="batchMode" value="resize" checked><span>リサイズ</span></label><label><input type="radio" name="batchMode" value="crop"><span>トリミング</span></label></div><p id="batchModeHelp" class="notice"></p></section>
-      <section class="card"><div class="section-title"><h2>共通設定</h2><p>一括変換ではフリー調整や元画像比率フィルタは使いません。</p></div><div id="batchResizeMethodBlock"><h3>リサイズ処理方式</h3><div id="batchResizeMethod" class="radio-list"></div></div><div class="input-row"><label>幅<input id="batchWidth" type="number" min="1" max="4096" value="512" inputmode="numeric"></label><label>高さ<input id="batchHeight" type="number" min="1" max="4096" value="512" inputmode="numeric"></label></div><h3>サイズプリセット</h3><div id="batchPresets" class="preset-groups"></div></section>
+      <section class="card"><div class="section-title"><h2>複数画像選択</h2><p>一括変換では共通設定を全画像へ適用します。</p></div><label class="file-button">複数画像を選択<input id="batchInput" type="file" multiple accept="image/png,image/jpeg,image/webp"></label></section>
+      <section id="batchOriginalCard" class="card hidden"><div class="section-title"><h2>選択画像</h2><p>現在のプレビュー対象画像を確認するための簡易表示です。設定やトリミング枠は反映しません。</p></div><canvas id="batchOriginalPreview" class="source-canvas" aria-label="一括変換の選択画像簡易表示"></canvas></section>
+      <section class="card"><div class="section-title"><h2>選択画像の情報</h2></div><div class="info-grid"><div><span class="info-label">選択枚数</span><span id="batchCount">0枚</span></div><div><span class="info-label">ファイル名</span><span id="batchName">----</span></div><div><span class="info-label">元画像サイズ</span><span id="batchSourceSize">----</span></div><div><span class="info-label">出力予定</span><span id="batchOutputSize">----</span></div></div></section>
+      <section class="card"><div class="section-title"><h2>サイズ設定</h2><p>一括変換ではフリー調整や元画像比率フィルタは使いません。</p></div><div id="batchResizeMethodBlock"><h3>リサイズ処理方式</h3><div id="batchResizeMethod" class="radio-list"></div></div><div class="input-row"><label>幅<input id="batchWidth" type="number" min="1" max="4096" value="512" inputmode="numeric"></label><label>高さ<input id="batchHeight" type="number" min="1" max="4096" value="512" inputmode="numeric"></label></div><h3>サイズプリセット</h3><div id="batchPresets" class="preset-groups"></div></section>
       <section id="batchPositionControls" class="card hidden"><div class="section-title"><h2>位置設定</h2><p>横方向に調整が必要な画像では「左 / 中央 / 右」が効きます。<br>縦方向に調整が必要な画像では「上 / 中央 / 下」が効きます。</p></div><div id="batchPositionButtons"></div></section>
+      <section class="card"><div class="section-title"><h2>プレビュー</h2><p>現在の共通設定を代表画像へ反映して確認します。</p></div><canvas id="batchPreview" class="preview-canvas"></canvas></section>
+      <div class="pager"><button id="batchPrev" type="button" class="secondary-button">前へ</button><span id="batchCounter">0 / 0</span><button id="batchNext" type="button" class="secondary-button">次へ</button></div>
       <section class="card"><div class="section-title"><h2>保存設定</h2></div><div id="commonSaveBatch"></div><p class="notice warning">連続ダウンロードは最大10枚までです。枚数が多い場合はZIP保存を使ってください。ブラウザによっては複数ダウンロードがブロックされる場合があります。</p><div class="action-grid"><button id="zipButton" class="primary-button" type="button">ZIPで保存</button><button id="multiDownloadButton" class="secondary-button" type="button">連続ダウンロード</button></div></section>
     </section>
+
   </main>
   <script src="libs/jszip.min.js"></script>
   <script src="js/image-loader.js"></script><script src="js/resize-service.js"></script><script src="js/file-service.js"></script><script src="js/settings-service.js"></script><script src="js/preset-service.js"></script><script src="js/app.js"></script>
