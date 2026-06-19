@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocket-image-resizer-v4";
+const CACHE_NAME = "pocket-image-resizer-v5-redesigned";
 const REQUIRED_ASSETS = [
   "./index.html",
   "./css/style.css",
@@ -8,6 +8,7 @@ const REQUIRED_ASSETS = [
   "./js/file-service.js",
   "./js/settings-service.js",
   "./js/preset-service.js",
+  "./libs/jszip.min.js",
   "./manifest.json",
   "./icons/icon.svg"
 ];

@@ -1,373 +1,49 @@
 (() => {
   "use strict";
-
-  const ICON_SIZES = [192, 512, 1024];
-  const MULTI_DOWNLOAD_INTERVAL_MS = 500;
-  const imageInput = document.getElementById("imageInput");
-  const previewArea = document.getElementById("previewArea");
-  const previewImage = document.getElementById("previewImage");
-  const sourceName = document.getElementById("sourceName");
-  const sourceFileSize = document.getElementById("sourceFileSize");
-  const sourceSize = document.getElementById("sourceSize");
-  const outputSize = document.getElementById("outputSize");
-  const outputFormat = document.getElementById("outputFormat");
-  const outputMode = document.getElementById("outputMode");
-  const widthInput = document.getElementById("widthInput");
-  const heightInput = document.getElementById("heightInput");
-  const lockAspectInput = document.getElementById("lockAspectInput");
-  const ratioFilterInput = document.getElementById("ratioFilterInput");
-  const quickPresetGroups = document.getElementById("quickPresetGroups");
-  const presetGroups = document.getElementById("presetGroups");
-  const resizeButton = document.getElementById("resizeButton");
-  const iconSetButton = document.getElementById("iconSetButton");
-  const message = document.getElementById("message");
-  const backgroundOptions = document.getElementById("backgroundOptions");
-  const formatSelect = document.getElementById("formatSelect");
-  const qualityOptions = document.getElementById("qualityOptions");
-  const cropRatioSection = document.getElementById("cropRatioSection");
-  const cropRatioDisabledHelp = document.getElementById("cropRatioDisabledHelp");
-  const useCropRatioInput = document.getElementById("useCropRatioInput");
-  const cropRatioControls = document.getElementById("cropRatioControls");
-  const cropRatioSelect = document.getElementById("cropRatioSelect");
-  const jpegWarning = document.getElementById("jpegWarning");
-  const cropRatioWarning = document.getElementById("cropRatioWarning");
-  const currentSettings = document.getElementById("currentSettings");
-
-  let currentImageData = null;
-  let currentObjectUrl = null;
-  let aspectRatio = 1;
-  let syncingSize = false;
-  let selectedPresetId = null;
-
-  function setMessage(text, isOk = false) {
-    message.textContent = text || "";
-    message.classList.toggle("ok", isOk);
-  }
-
-  function readSize() {
-    return {
-      width: widthInput.value === "" ? "" : Number(widthInput.value),
-      height: heightInput.value === "" ? "" : Number(heightInput.value)
-    };
-  }
-
-  function clampOutputSize(value) {
-    return Math.max(1, Math.min(window.ResizeService.MAX_OUTPUT_SIZE, value));
-  }
-
-  function updateOutputSize() {
-    const { width, height } = readSize();
-    const valid = Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0;
-    outputSize.textContent = valid ? `${width} × ${height} px` : "----";
-    const formatLabel = formatSelect.value.toUpperCase();
-    const modeLabel = selectedRadio("resizeMode", "cover") === "cover" ? "中央トリミング" : "余白あり";
-    outputFormat.textContent = formatLabel;
-    outputMode.textContent = modeLabel;
-    currentSettings.textContent = `現在の設定：${formatLabel} / ${modeLabel}`;
-    updateActivePreset();
-  }
-
-  function selectedRadio(name, fallback) {
-    const selected = document.querySelector(`input[name="${name}"]:checked`);
-    return selected ? selected.value : fallback;
-  }
-
-  function selectedCropRatio() {
-    if (selectedRadio("resizeMode", "cover") !== "cover" || !useCropRatioInput.checked) return null;
-    const preset = window.PresetService.getCropRatioPresetById(cropRatioSelect.value);
-    if (preset.id === "source") return currentImageData ? currentImageData.width / currentImageData.height : null;
-    return preset.ratio;
-  }
-
-  function getSettings() {
-    const { width, height } = readSize();
-    return {
-      width,
-      height,
-      mode: selectedRadio("resizeMode", "cover"),
-      backgroundColor: selectedRadio("backgroundColor", "transparent"),
-      format: formatSelect.value,
-      quality: Number(selectedRadio("quality", "0.85")),
-      lockAspect: lockAspectInput.checked,
-      ratioFilter: ratioFilterInput.checked,
-      useCropRatio: useCropRatioInput.checked,
-      cropRatioPresetId: cropRatioSelect.value,
-      outputPresetId: selectedPresetId
-    };
-  }
-
-  function saveSettings() {
-    window.SettingsService.save(getSettings());
-  }
-
-  function setChecked(name, value) {
-    const input = value ? document.querySelector(`input[name="${name}"][value="${value}"]`) : null;
-    if (input) input.checked = true;
-  }
-
-  function applySettings() {
-    const settings = window.SettingsService.load();
-    if (Number.isInteger(settings.width)) widthInput.value = settings.width;
-    if (Number.isInteger(settings.height)) heightInput.value = settings.height;
-    if (typeof settings.lockAspect === "boolean") lockAspectInput.checked = settings.lockAspect;
-    if (typeof settings.ratioFilter === "boolean") ratioFilterInput.checked = settings.ratioFilter;
-    if (typeof settings.useCropRatio === "boolean") useCropRatioInput.checked = settings.useCropRatio;
-    if (settings.format) formatSelect.value = settings.format;
-    if (settings.outputPresetId) selectedPresetId = settings.outputPresetId;
-    setChecked("resizeMode", settings.mode);
-    setChecked("backgroundColor", settings.backgroundColor);
-    setChecked("quality", String(settings.quality));
-    if (settings.cropRatioPresetId) cropRatioSelect.value = settings.cropRatioPresetId;
-  }
-
-  function renderCropRatioOptions() {
-    cropRatioSelect.textContent = "";
-    window.PresetService.CROP_RATIO_PRESETS.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset.id;
-      option.textContent = `${preset.label} - ${preset.description}`;
-      cropRatioSelect.appendChild(option);
-    });
-  }
-
-  function renderPresets() {
-    const source = currentImageData;
-    const allPresets = window.PresetService.OUTPUT_PRESETS;
-    const quickPresets = allPresets.filter((preset) => preset.category === "favorite");
-    const allDetailPresets = allPresets.filter((preset) => preset.category !== "favorite");
-    const detailPresets = ratioFilterInput.checked && source
-      ? window.PresetService.filterPresetsBySourceRatio(allDetailPresets, source.width, source.height)
-      : allDetailPresets;
-    const hasNoMatchingPresets = Boolean(ratioFilterInput.checked && source && detailPresets.length === 0);
-
-    quickPresetGroups.textContent = "";
-    quickPresets.forEach((preset) => quickPresetGroups.appendChild(createPresetButton(preset)));
-
-    presetGroups.textContent = "";
-    window.PresetService.getPresetsByCategory(detailPresets).forEach((group) => {
-      const details = document.createElement("details");
-      const summary = document.createElement("summary");
-      summary.textContent = group.label;
-      const row = document.createElement("div");
-      row.className = "preset-row";
-      group.presets.forEach((preset) => row.appendChild(createPresetButton(preset)));
-      details.append(summary, row);
-      presetGroups.appendChild(details);
-    });
-
-    if (hasNoMatchingPresets) {
-      const empty = document.createElement("p");
-      empty.className = "empty-presets";
-      empty.textContent = "元画像に近い比率のプリセットがありません。すべて表示に戻すか、カスタムサイズを指定してください。";
-      presetGroups.appendChild(empty);
-    }
-    updateActivePreset();
-    return hasNoMatchingPresets;
-  }
-
-  function createPresetButton(preset) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "preset-button";
-    button.dataset.presetId = preset.id;
-    button.dataset.width = preset.width;
-    button.dataset.height = preset.height;
-    const label = document.createElement("span");
-    label.textContent = preset.label;
-    const usage = document.createElement("small");
-    usage.textContent = preset.usage;
-    button.append(label, usage);
-    return button;
-  }
-
-  function updateActivePreset() {
-    document.querySelectorAll(".preset-button").forEach((button) => {
-      const preset = window.PresetService.OUTPUT_PRESETS.find((item) => item.id === button.dataset.presetId);
-      const { width, height } = readSize();
-      const isActive = preset && button.dataset.presetId === selectedPresetId && width === preset.width && height === preset.height;
-      button.classList.toggle("active", isActive);
-    });
-  }
-
-  function updateConditionalOptions() {
-    const isContain = selectedRadio("resizeMode", "cover") === "contain";
-    const isJpeg = formatSelect.value === "jpeg";
-    backgroundOptions.classList.toggle("hidden", !isContain && !isJpeg);
-    qualityOptions.classList.toggle("hidden", formatSelect.value === "png");
-    jpegWarning.classList.toggle("hidden", !isJpeg);
-    cropRatioSection.classList.toggle("hidden", isContain);
-    cropRatioDisabledHelp.classList.toggle("hidden", !isContain);
-    cropRatioControls.classList.toggle("hidden", !useCropRatioInput.checked || isContain);
-    cropRatioWarning.classList.toggle("hidden", !useCropRatioInput.checked || isContain);
-    useCropRatioInput.disabled = isContain;
-    cropRatioSelect.disabled = isContain || !useCropRatioInput.checked || !currentImageData;
-    updateOutputSize();
-  }
-
-  function syncAspect(changed) {
-    if (syncingSize || !lockAspectInput.checked || !currentImageData) return;
-    const value = Number(changed === "width" ? widthInput.value : heightInput.value);
-    if (!Number.isInteger(value) || value < 1) return;
-    syncingSize = true;
-    if (changed === "width") {
-      heightInput.value = clampOutputSize(Math.round(value / aspectRatio));
-    } else {
-      widthInput.value = clampOutputSize(Math.round(value * aspectRatio));
-    }
-    syncingSize = false;
-  }
-
-  function validateCurrentSize() {
-    const { width, height } = readSize();
-    window.ResizeService.validateSize(width, height);
-    return { width, height };
-  }
-
-  async function handleImageSelection(event) {
-    const file = event.target.files && event.target.files[0];
-    setMessage("");
-    if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
-    currentObjectUrl = null;
-
-    try {
-      currentImageData = await window.ImageLoader.loadFromFile(file);
-      currentObjectUrl = currentImageData.objectUrl;
-      aspectRatio = currentImageData.width / currentImageData.height;
-      previewImage.src = currentObjectUrl;
-      previewArea.classList.remove("hidden");
-      sourceName.textContent = currentImageData.fileName;
-      sourceFileSize.textContent = window.FileService.formatFileSize(currentImageData.fileSize);
-      sourceSize.textContent = `${currentImageData.width} × ${currentImageData.height} px`;
-      updateOutputSize();
-      updateConditionalOptions();
-      const hasNoMatchingPresets = renderPresets();
-      if (hasNoMatchingPresets) {
-        setMessage("元画像に近い比率のプリセットがありません。すべて表示に戻すか、カスタムサイズを指定してください。");
-      } else {
-        setMessage("画像を読み込みました。", true);
-      }
-    } catch (error) {
-      currentImageData = null;
-      previewImage.removeAttribute("src");
-      previewArea.classList.add("hidden");
-      sourceName.textContent = "----";
-      sourceFileSize.textContent = "----";
-      sourceSize.textContent = "----";
-      updateConditionalOptions();
-      renderPresets();
-      setMessage(error.message || "画像の読み込みに失敗しました。");
-    }
-  }
-
-  function handlePresetClick(event) {
-    const button = event.target.closest(".preset-button");
-    if (!button) return;
-    selectedPresetId = button.dataset.presetId;
-    widthInput.value = button.dataset.width;
-    heightInput.value = button.dataset.height;
-    updateOutputSize();
-    saveSettings();
-    setMessage("");
-  }
-
-  function handleSizeInput(changed) {
-    selectedPresetId = null;
-    syncAspect(changed);
-    updateOutputSize();
-    saveSettings();
-  }
-
-  async function saveOne(width, height) {
-    const settings = getSettings();
-    const blob = await window.ResizeService.resize({ ...settings, image: currentImageData.image, width, height, cropRatio: selectedCropRatio() });
-    const fileName = window.FileService.makeResizedFileName(currentImageData.fileName, width, height, settings.format);
-    window.FileService.downloadBlob(blob, fileName);
-    return fileName;
-  }
-
-  async function withSavingButton(button, action) {
-    const originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = "保存中...";
-    try {
-      return await action();
-    } finally {
-      button.disabled = false;
-      button.textContent = originalText;
-    }
-  }
-
-  async function handleResize() {
-    setMessage("");
-    if (!currentImageData) {
-      setMessage("画像が選択されていません。");
-      return;
-    }
-    try {
-      const { width, height } = validateCurrentSize();
-      const fileName = await withSavingButton(resizeButton, () => saveOne(width, height));
-      saveSettings();
-      setMessage(`${fileName} を保存しました。`, true);
-    } catch (error) {
-      setMessage(error.message || "保存に失敗しました。もう一度お試しください。");
-    }
-  }
-
-  async function handleIconSetSave() {
-    setMessage("");
-    if (!currentImageData) {
-      setMessage("画像が選択されていません。");
-      return;
-    }
-    try {
-      await withSavingButton(iconSetButton, async () => {
-        for (let index = 0; index < ICON_SIZES.length; index += 1) {
-          const size = ICON_SIZES[index];
-          await saveOne(size, size);
-          if (index < ICON_SIZES.length - 1) await new Promise((resolve) => setTimeout(resolve, MULTI_DOWNLOAD_INTERVAL_MS));
-        }
-      });
-      saveSettings();
-      setMessage("アイコンセットを保存しました。", true);
-    } catch (error) {
-      setMessage(error.message || "保存に失敗しました。もう一度お試しください。");
-    }
-  }
-
-  function bindEvents() {
-    imageInput.addEventListener("change", handleImageSelection);
-    quickPresetGroups.addEventListener("click", handlePresetClick);
-    presetGroups.addEventListener("click", handlePresetClick);
-    widthInput.addEventListener("input", () => handleSizeInput("width"));
-    heightInput.addEventListener("input", () => handleSizeInput("height"));
-    lockAspectInput.addEventListener("change", saveSettings);
-    ratioFilterInput.addEventListener("change", () => {
-      const hasNoMatchingPresets = renderPresets();
-      saveSettings();
-      setMessage(hasNoMatchingPresets ? "元画像に近い比率のプリセットがありません。すべて表示に戻すか、カスタムサイズを指定してください。" : "");
-    });
-    useCropRatioInput.addEventListener("change", () => { updateConditionalOptions(); saveSettings(); });
-    cropRatioSelect.addEventListener("change", saveSettings);
-    document.querySelectorAll('input[name="resizeMode"], input[name="backgroundColor"], input[name="quality"]').forEach((input) => {
-      input.addEventListener("change", () => { updateConditionalOptions(); saveSettings(); setMessage(""); });
-    });
-    formatSelect.addEventListener("change", () => { updateConditionalOptions(); saveSettings(); setMessage(""); });
-    resizeButton.addEventListener("click", handleResize);
-    iconSetButton.addEventListener("click", handleIconSetSave);
-  }
-
-  function registerServiceWorker() {
-    if (!("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("./service-worker.js").catch((error) => {
-      console.warn("Service worker registration failed:", error);
-    });
-  }
-
-  renderCropRatioOptions();
-  applySettings();
-  renderPresets();
-  bindEvents();
-  updateOutputSize();
-  updateConditionalOptions();
-  registerServiceWorker();
+  const MULTI_DOWNLOAD_INTERVAL_MS = 500, ZIP_LIMIT = 30, MULTI_LIMIT = 10;
+  const $ = (id) => document.getElementById(id);
+  const message = $("message");
+  const els = ["singleTab","batchTab","singlePanel","batchPanel","imageInput","singlePreview","singleNudge","singleSourceSize","singleSourceName","singleFileSize","singleOutputSize","singleModeHelp","singleResizeControls","singleCropControls","singleResizeMethod","singleResizeWidth","singleResizeHeight","resizeWarning","singleQuickPresets","singleDetailPresets","singlePresetEmpty","cropDirection","cropRatio","singleCropWidth","singleCropHeight","singleCropPresets","singlePositionControls","singlePositionButtons","commonSaveSingle","singleSaveButton","continueButton","resetOriginalButton","batchInput","batchPreview","batchPrev","batchNext","batchCounter","batchCount","batchName","batchSourceSize","batchOutputSize","batchModeHelp","batchResizeMethod","batchWidth","batchHeight","batchPresets","batchPositionControls","batchPositionButtons","commonSaveBatch","zipButton","multiDownloadButton"].reduce((o, id) => { o[id] = $(id); return o; }, {});
+  const state = { top: "single", original: null, working: null, batch: [], batchIndex: 0, common: { format: "png", quality: 0.85, backgroundColor: "transparent" }, single: { mode: "resize", resizeMethod: "aspect", width: 512, height: 512, cropDirection: "both", cropRatio: "none", x: 0.5, y: 0.5 }, batchSettings: { mode: "resize", resizeMethod: "stretch", width: 512, height: 512, x: 0.5, y: 0.5 } };
+  const resizeMethods = [{ v: "aspect", t: "元画像の縦横比を使用" }, { v: "stretch", t: "変形" }, { v: "cover", t: "トリミング" }, { v: "contain", t: "余白付与" }];
+  const batchMethods = resizeMethods.slice(1);
+  function setMessage(t, ok) { message.textContent = t || ""; message.classList.toggle("ok", Boolean(ok)); }
+  function radio(name, fallback) { const e = document.querySelector(`input[name="${name}"]:checked`); return e ? e.value : fallback; }
+  function setRadio(name, value) { const e = document.querySelector(`input[name="${name}"][value="${value}"]`); if (e) e.checked = true; }
+  function num(el) { return el.value === "" ? "" : Number(el.value); }
+  function ratioEqual(a, b) { return Math.abs(a - b) / a <= window.PresetService.RATIO_MATCH_TOLERANCE; }
+  function opFromResize(m) { return { aspect: "resize-aspect", stretch: "stretch", cover: "resize-cover", contain: "resize-contain" }[m]; }
+  function currentSingleSize() { return state.single.mode === "resize" ? { width: num(els.singleResizeWidth), height: num(els.singleResizeHeight) } : { width: num(els.singleCropWidth), height: num(els.singleCropHeight) }; }
+  function commonHtml(container) { container.textContent = ""; const wrap = document.createElement("div"); wrap.className = "save-grid"; [["format", "保存形式", [["png","PNG"],["jpeg","JPEG"],["webp","WebP"]]], ["quality", "品質", [["0.6","低"],["0.85","標準"],["0.95","高"]]], ["backgroundColor", "余白色", [["transparent","透明"],["white","白"],["black","黒"]]]].forEach(([key, label, opts]) => { const box = document.createElement("div"); const p = document.createElement("p"); p.textContent = label; box.appendChild(p); opts.forEach(([v, t]) => { const l = document.createElement("label"), i = document.createElement("input"); i.type = "radio"; i.name = `${container.id}-${key}`; i.value = v; i.checked = String(state.common[key]) === v; l.append(i, document.createTextNode(t)); box.appendChild(l); i.addEventListener("change", () => { state.common[key] = key === "quality" ? Number(v) : v; saveSettings(); updateAll(); }); }); wrap.appendChild(box); }); container.appendChild(wrap); }
+  function renderRadioList(container, name, items, value) { container.textContent = ""; items.forEach((item) => { const l = document.createElement("label"), i = document.createElement("input"); i.type = "radio"; i.name = name; i.value = item.v; i.checked = item.v === value; l.append(i, document.createTextNode(item.t)); container.appendChild(l); }); }
+  function presetButton(p) { const b = document.createElement("button"); b.type = "button"; b.className = "preset-button"; b.dataset.width = p.width; b.dataset.height = p.height; const s = document.createElement("span"); s.textContent = p.label; const small = document.createElement("small"); small.textContent = p.usage; b.append(s, small); return b; }
+  function renderPresetGroups(container, presets) { container.textContent = ""; window.PresetService.getPresetsByCategory(presets).forEach((g) => { const d = document.createElement("details"), sum = document.createElement("summary"), row = document.createElement("div"); d.open = g.category === "favorite"; sum.textContent = g.label; row.className = "preset-row"; g.presets.forEach((p) => row.appendChild(presetButton(p))); d.append(sum, row); container.appendChild(d); }); }
+  function filteredSingleResizePresets(favs) { const all = window.PresetService.OUTPUT_PRESETS.filter((p) => favs ? p.category === "favorite" : p.category !== "favorite"); if (state.single.resizeMethod !== "aspect" || !state.working) return all; const r = state.working.width / state.working.height; return all.filter((p) => ratioEqual(r, p.width / p.height)); }
+  function filteredCropPresets() { let ps = window.PresetService.OUTPUT_PRESETS; if (!state.working) return ps; if (state.single.cropDirection === "vertical") ps = ps.filter((p) => p.width === state.working.width); if (state.single.cropDirection === "horizontal") ps = ps.filter((p) => p.height === state.working.height); const ratio = selectedCropRatio(); if (ratio) ps = ps.filter((p) => ratioEqual(ratio, p.width / p.height)); return ps; }
+  function selectedCropRatio() { const id = els.cropRatio.value; if (id === "none") return null; if (id === "source" && state.working) return state.working.width / state.working.height; return (window.PresetService.getCropRatioPresetById(id).ratio || null); }
+  function syncAspect(changed) { if (!state.working || state.single.resizeMethod !== "aspect") return; const r = state.working.width / state.working.height; if (changed === "w" && Number.isInteger(num(els.singleResizeWidth))) els.singleResizeHeight.value = Math.round(num(els.singleResizeWidth) / r); if (changed === "h" && Number.isInteger(num(els.singleResizeHeight))) els.singleResizeWidth.value = Math.round(num(els.singleResizeHeight) * r); }
+  function syncCrop(changed) { if (!state.working) return; const ratio = selectedCropRatio(), dir = state.single.cropDirection; if (dir === "vertical") { els.singleCropWidth.value = state.working.width; if (ratio) els.singleCropHeight.value = Math.round(state.working.width / ratio); } else if (dir === "horizontal") { els.singleCropHeight.value = state.working.height; if (ratio) els.singleCropWidth.value = Math.round(state.working.height * ratio); } else if (ratio) { if (changed === "w") els.singleCropHeight.value = Math.round(num(els.singleCropWidth) / ratio); else els.singleCropWidth.value = Math.round(num(els.singleCropHeight) * ratio); } }
+  function positionAxes(mode, method, image, w, h) { if (!image) return { x: false, y: false, grid: false }; if (mode === "crop") return { x: state.single.cropDirection !== "vertical", y: state.single.cropDirection !== "horizontal", grid: state.single.cropDirection === "both" }; if (method !== "cover" && method !== "contain") return { x: false, y: false, grid: false }; const sr = image.width / image.height, tr = w / h; return method === "cover" ? { x: sr > tr, y: sr < tr, grid: false } : { x: sr < tr, y: sr > tr, grid: false }; }
+  function renderPosition(container, axes, batch) { container.textContent = ""; const add = (txt, x, y) => { const b = document.createElement("button"); b.type = "button"; b.className = "preset-button"; b.textContent = txt; b.addEventListener("click", () => { const target = batch ? state.batchSettings : state.single; if (x !== null) target.x = x; if (y !== null) target.y = y; saveSettings(); updateAll(); }); container.appendChild(b); };
+    if (axes.grid) [["左上",0,0],["上",0.5,0],["右上",1,0],["左",0,0.5],["中央",0.5,0.5],["右",1,0.5],["左下",0,1],["下",0.5,1],["右下",1,1]].forEach((a)=>add(...a)); else { if (axes.x) [["左",0,null],["中央",0.5,null],["右",1,null]].forEach((a)=>add(...a)); if (axes.y) [["上",null,0],["中央",null,0.5],["下",null,1]].forEach((a)=>add(...a)); }
+    const nudges = document.createElement("div"); nudges.className = "nudge-grid"; [["←",-0.1,0],["→",0.1,0],["↑",0,-0.1],["↓",0,0.1],["微調整 ←",-0.02,0],["微調整 →",0.02,0],["微調整 ↑",0,-0.02],["微調整 ↓",0,0.02]].forEach(([t, dx, dy]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.addEventListener("click", () => { const target = batch ? state.batchSettings : state.single; if (axes.x) target.x = Math.max(0, Math.min(1, target.x + dx)); if (axes.y) target.y = Math.max(0, Math.min(1, target.y + dy)); saveSettings(); updateAll(); }); nudges.appendChild(b); }); container.appendChild(nudges); }
+  function preview(canvas, image, opts) { const ctx = canvas.getContext("2d"); canvas.width = 340; canvas.height = 240; ctx.clearRect(0,0,340,240); if (!image) return; const c = window.ResizeService.renderCanvas(opts); const scale = Math.min(330 / c.width, 230 / c.height); const dw = c.width * scale, dh = c.height * scale, dx = (340 - dw) / 2, dy = (240 - dh) / 2; ctx.fillStyle = "#dbe4f0"; ctx.fillRect(dx - 4, dy - 4, dw + 8, dh + 8); ctx.drawImage(c, dx, dy, dw, dh); }
+  function singleOpts() { const s = currentSingleSize(); window.ResizeService.validateSize(s.width, s.height); return { image: state.working.image, width: s.width, height: s.height, operation: state.single.mode === "resize" ? opFromResize(state.single.resizeMethod) : "crop", backgroundColor: state.common.backgroundColor, format: state.common.format, quality: state.common.quality, x: state.single.x, y: state.single.y }; }
+  function updateAll() { state.single.mode = radio("singleMode", state.single.mode); state.batchSettings.mode = radio("batchMode", state.batchSettings.mode); state.single.resizeMethod = radio("singleResizeMethod", state.single.resizeMethod); state.batchSettings.resizeMethod = radio("batchResizeMethod", state.batchSettings.resizeMethod); state.single.width = num(els.singleResizeWidth); state.single.height = num(els.singleResizeHeight); state.batchSettings.width = num(els.batchWidth); state.batchSettings.height = num(els.batchHeight); state.single.cropDirection = els.cropDirection.value; state.single.cropRatio = els.cropRatio.value;
+    els.singleResizeControls.classList.toggle("hidden", state.single.mode !== "resize"); els.singleCropControls.classList.toggle("hidden", state.single.mode !== "crop"); els.singleModeHelp.textContent = state.single.mode === "resize" ? "リサイズ：指定した幅・高さに変換します。" : "トリミング：画像を拡大縮小せず、切り抜きまたは余白付与で出力範囲を作ります。"; els.batchModeHelp.textContent = state.batchSettings.mode === "resize" ? "一括リサイズ：変形・トリミング・余白付与を共通設定で適用します。" : "一括トリミング：拡大縮小せず、足りない方向には余白を付けます。";
+    renderPresetGroups(els.singleDetailPresets, filteredSingleResizePresets(false)); els.singleQuickPresets.textContent = ""; filteredSingleResizePresets(true).forEach((p)=>els.singleQuickPresets.appendChild(presetButton(p))); els.singlePresetEmpty.classList.toggle("hidden", state.single.resizeMethod !== "aspect" || filteredSingleResizePresets(true).length + filteredSingleResizePresets(false).length > 0); renderPresetGroups(els.singleCropPresets, filteredCropPresets());
+    const s = currentSingleSize(), validS = Number.isInteger(s.width) && Number.isInteger(s.height); els.singleOutputSize.textContent = validS ? `${s.width} × ${s.height} px` : "----"; els.resizeWarning.classList.toggle("hidden", !(state.working && state.single.resizeMethod === "stretch" && validS && !ratioEqual(state.working.width / state.working.height, s.width / s.height))); els.resizeWarning.textContent = "縦横比が変わるため、画像が歪む場合があります。";
+    const axes = positionAxes(state.single.mode, state.single.resizeMethod, state.working, s.width || 1, s.height || 1); els.singlePositionControls.classList.toggle("hidden", !axes.x && !axes.y); renderPosition(els.singlePositionButtons, axes, false); els.singleNudge.textContent = ""; if (axes.x || axes.y) renderPosition(els.singleNudge, axes, false); if (state.working && validS) preview(els.singlePreview, state.working.image, { ...singleOpts(), format: state.common.format });
+    const bValid = Number.isInteger(num(els.batchWidth)) && Number.isInteger(num(els.batchHeight)); els.batchOutputSize.textContent = bValid ? `${num(els.batchWidth)} × ${num(els.batchHeight)} px` : "----"; const bAxes = state.batchSettings.mode === "crop" || ["cover","contain"].includes(state.batchSettings.resizeMethod) ? { x: true, y: true, grid: false } : { x: false, y: false, grid: false }; els.batchPositionControls.classList.toggle("hidden", !bAxes.x && !bAxes.y); renderPosition(els.batchPositionButtons, bAxes, true); updateBatchInfo(); if (state.batch[state.batchIndex] && bValid) preview(els.batchPreview, state.batch[state.batchIndex].image, batchOpts(state.batch[state.batchIndex])); saveSettings(); }
+  function batchOpts(item) { return { image: item.image, width: num(els.batchWidth), height: num(els.batchHeight), operation: state.batchSettings.mode === "crop" ? "crop" : opFromResize(state.batchSettings.resizeMethod), backgroundColor: state.common.backgroundColor, format: state.common.format, quality: state.common.quality, x: state.batchSettings.x, y: state.batchSettings.y }; }
+  function updateBatchInfo() { const item = state.batch[state.batchIndex]; els.batchCount.textContent = `${state.batch.length}枚`; els.batchCounter.textContent = state.batch.length ? `${state.batchIndex + 1} / ${state.batch.length}` : "0 / 0"; els.batchName.textContent = item ? item.fileName : "----"; els.batchSourceSize.textContent = item ? `${item.width} × ${item.height} px` : "----"; }
+  async function loadSingle(e) { try { const d = await window.ImageLoader.loadFromFile(e.target.files && e.target.files[0]); state.original = d; state.working = d; els.singleSourceName.textContent = d.fileName; els.singleFileSize.textContent = window.FileService.formatFileSize(d.fileSize); els.singleSourceSize.textContent = `${d.width} × ${d.height} px`; if (!els.singleResizeWidth.value) els.singleResizeWidth.value = d.width; if (!els.singleResizeHeight.value) els.singleResizeHeight.value = d.height; els.singleCropWidth.value = d.width; els.singleCropHeight.value = d.height; setMessage("画像を読み込みました。", true); updateAll(); } catch (err) { setMessage(err.message || "画像の読み込みに失敗しました。"); } }
+  async function loadBatch(e) { try { state.batch = []; for (const f of Array.from(e.target.files || [])) state.batch.push(await window.ImageLoader.loadFromFile(f)); state.batchIndex = 0; setMessage(`${state.batch.length}枚の画像を読み込みました。`, true); updateAll(); } catch (err) { setMessage(err.message || "画像の読み込みに失敗しました。"); } }
+  async function saveSingle(continueOnly) { if (!state.working) { setMessage("画像が選択されていません。"); return; } try { const opts = singleOpts(), blob = await window.ResizeService.convert(opts); if (continueOnly) { const img = await window.ImageLoader.loadFromBlob(blob, state.working.fileName); state.working = img; els.singleSourceSize.textContent = `${img.width} × ${img.height} px`; setMessage("現在の結果を作業中画像にしました。", true); } else { window.FileService.downloadBlob(blob, state.single.mode === "crop" ? window.FileService.makeCroppedFileName(state.working.fileName, opts.width, opts.height, state.common.format) : window.FileService.makeResizedFileName(state.working.fileName, opts.width, opts.height, state.common.format)); setMessage("保存しました。", true); } updateAll(); } catch (err) { setMessage(err.message || "保存に失敗しました。もう一度お試しください。"); } }
+  async function saveBatch(zip) { if (!state.batch.length) { setMessage("画像が選択されていません。"); return; } if (zip && state.batch.length > ZIP_LIMIT) { setMessage("ZIP保存は最大30枚までです。"); return; } if (!zip && state.batch.length > MULTI_LIMIT) { setMessage("連続ダウンロードは最大10枚までです。枚数が多い場合はZIP保存を使ってください。"); return; } try { if (zip) { const z = new JSZip(); for (const item of state.batch) { const o = batchOpts(item), blob = await window.ResizeService.convert(o); z.file(window.FileService.makeResizedFileName(item.fileName, o.width, o.height, state.common.format), blob); } const date = new Date().toISOString().slice(0,10).replace(/-/g, ""); window.FileService.downloadBlob(await z.generateAsync({ type: "blob" }), `converted_images_${date}.zip`); } else { for (let i = 0; i < state.batch.length; i += 1) { const item = state.batch[i], o = batchOpts(item); window.FileService.downloadBlob(await window.ResizeService.convert(o), window.FileService.makeResizedFileName(item.fileName, o.width, o.height, state.common.format)); if (i < state.batch.length - 1) await new Promise((r) => setTimeout(r, MULTI_DOWNLOAD_INTERVAL_MS)); } } setMessage("一括保存しました。", true); } catch (err) { setMessage(zip ? "ZIP保存に失敗しました。枚数を減らして再度お試しください。" : (err.message || "保存に失敗しました。もう一度お試しください。")); } }
+  function saveSettings() { window.SettingsService.saveAll({ commonSettings: state.common, singleSettings: state.single, batchSettings: state.batchSettings }); }
+  function bindDrag(canvas, batch) { let dragging = false, lastX = 0, lastY = 0; canvas.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId); }); canvas.addEventListener("pointermove", (e) => { if (!dragging) return; const target = batch ? state.batchSettings : state.single; target.x = Math.max(0, Math.min(1, target.x + (e.clientX - lastX) / 160)); target.y = Math.max(0, Math.min(1, target.y + (e.clientY - lastY) / 160)); lastX = e.clientX; lastY = e.clientY; updateAll(); }); ["pointerup", "pointercancel"].forEach((type) => canvas.addEventListener(type, () => { dragging = false; saveSettings(); })); }
+  function init() { const saved = window.SettingsService.loadAll(); Object.assign(state.common, saved.commonSettings); Object.assign(state.single, saved.singleSettings); Object.assign(state.batchSettings, saved.batchSettings); els.singleResizeWidth.value = state.single.width; els.singleResizeHeight.value = state.single.height; els.batchWidth.value = state.batchSettings.width; els.batchHeight.value = state.batchSettings.height; renderRadioList(els.singleResizeMethod, "singleResizeMethod", resizeMethods, state.single.resizeMethod); renderRadioList(els.batchResizeMethod, "batchResizeMethod", batchMethods, state.batchSettings.resizeMethod); els.cropRatio.textContent = ""; [{ id: "none", label: "縦横比指定なし", description: "自由入力" }].concat(window.PresetService.CROP_RATIO_PRESETS).forEach((p) => { const o = document.createElement("option"); o.value = p.id; o.textContent = `${p.label} - ${p.description}`; els.cropRatio.appendChild(o); }); els.cropRatio.value = state.single.cropRatio; renderPresetGroups(els.batchPresets, window.PresetService.OUTPUT_PRESETS); commonHtml(els.commonSaveSingle); commonHtml(els.commonSaveBatch); setRadio("singleMode", state.single.mode); setRadio("batchMode", state.batchSettings.mode);
+    els.singleTab.addEventListener("click", () => { state.top = "single"; els.singlePanel.classList.remove("hidden"); els.batchPanel.classList.add("hidden"); els.singleTab.classList.add("active"); els.batchTab.classList.remove("active"); }); els.batchTab.addEventListener("click", () => { state.top = "batch"; els.batchPanel.classList.remove("hidden"); els.singlePanel.classList.add("hidden"); els.batchTab.classList.add("active"); els.singleTab.classList.remove("active"); }); els.imageInput.addEventListener("change", loadSingle); els.batchInput.addEventListener("change", loadBatch); bindDrag(els.singlePreview, false); [els.singleResizeWidth, els.singleResizeHeight].forEach((el, i) => el.addEventListener("input", () => { syncAspect(i ? "h" : "w"); updateAll(); })); [els.singleCropWidth, els.singleCropHeight].forEach((el, i) => el.addEventListener("input", () => { syncCrop(i ? "h" : "w"); updateAll(); })); [els.cropDirection, els.cropRatio].forEach((el) => el.addEventListener("change", () => { syncCrop("w"); updateAll(); })); [els.batchWidth, els.batchHeight].forEach((el) => el.addEventListener("input", updateAll)); document.addEventListener("change", (e) => { if (e.target.name === "singleMode" || e.target.name === "singleResizeMethod" || e.target.name === "batchMode" || e.target.name === "batchResizeMethod") updateAll(); }); [els.singleQuickPresets, els.singleDetailPresets, els.singleCropPresets, els.batchPresets].forEach((c) => c.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; const w = b.dataset.width, h = b.dataset.height; if (c === els.batchPresets) { els.batchWidth.value = w; els.batchHeight.value = h; } else if (c === els.singleCropPresets) { els.singleCropWidth.value = w; els.singleCropHeight.value = h; } else { els.singleResizeWidth.value = w; els.singleResizeHeight.value = h; } updateAll(); })); els.singleSaveButton.addEventListener("click", () => saveSingle(false)); els.continueButton.addEventListener("click", () => saveSingle(true)); els.resetOriginalButton.addEventListener("click", () => { if (state.original) { state.working = state.original; setMessage("元画像に戻しました。", true); updateAll(); } }); els.batchPrev.addEventListener("click", () => { if (state.batch.length) { state.batchIndex = (state.batchIndex + state.batch.length - 1) % state.batch.length; updateAll(); } }); els.batchNext.addEventListener("click", () => { if (state.batch.length) { state.batchIndex = (state.batchIndex + 1) % state.batch.length; updateAll(); } }); els.zipButton.addEventListener("click", () => saveBatch(true)); els.multiDownloadButton.addEventListener("click", () => saveBatch(false)); if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(console.warn); updateAll(); }
+  init();
 })();
