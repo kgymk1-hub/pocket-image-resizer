@@ -8,6 +8,10 @@
   const resizeMethods = [{ v: "aspect", t: "元画像の縦横比を使用" }, { v: "stretch", t: "変形" }, { v: "cover", t: "トリミング" }, { v: "contain", t: "余白付与" }];
   const batchMethods = resizeMethods.slice(1);
   let messageTimer = null;
+  const yieldToBrowser = () => new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
+    else setTimeout(resolve, 0);
+  });
   function setMessage(t, ok, autoClear) {
     if (messageTimer) { clearTimeout(messageTimer); messageTimer = null; }
     message.textContent = t || "";
@@ -108,16 +112,120 @@
   function revokeBatch(items) { items.forEach(revokeImageData); }
   function fileNameForMode(originalName, width, height) { return state.batchSettings.mode === "crop" ? window.FileService.makeCroppedFileName(originalName, width, height, state.common.format) : window.FileService.makeResizedFileName(originalName, width, height, state.common.format); }
   function setBusy(button, busy, text) { if (!button) return; if (busy) { button.dataset.originalText = button.textContent; button.textContent = text; button.disabled = true; } else { button.textContent = button.dataset.originalText || button.textContent; button.disabled = false; delete button.dataset.originalText; } }
-  function setGroupBusy(items, busy) { items.forEach((item) => { const el = item.el || item; if (!el) return; if (busy) { el.dataset.busyDisabled = el.disabled ? "1" : "0"; el.disabled = true; if (item.text) { el.dataset.originalText = el.textContent; el.textContent = item.text; } } else { el.disabled = el.dataset.busyDisabled === "1"; delete el.dataset.busyDisabled; if (item.text) { el.textContent = el.dataset.originalText || el.textContent; delete el.dataset.originalText; } } }); }
+  function setGroupBusy(items, busy) { items.forEach((item) => { const el = item.el || item; if (!el) return; if (busy) { if (!Object.prototype.hasOwnProperty.call(el.dataset, "busyDisabled")) el.dataset.busyDisabled = el.disabled ? "1" : "0"; el.disabled = true; if (item.text && !Object.prototype.hasOwnProperty.call(el.dataset, "originalText")) { el.dataset.originalText = el.textContent; el.textContent = item.text; } } else { el.disabled = el.dataset.busyDisabled === "1"; delete el.dataset.busyDisabled; if (item.text) { el.textContent = el.dataset.originalText || el.textContent; delete el.dataset.originalText; } } }); }
+  function controlsIn(root, selector) { return Array.from(root.querySelectorAll(selector)); }
   function updateBatchInfo() { const item = state.batch[state.batchIndex]; els.batchCount.textContent = `${state.batch.length}枚`; els.batchCounter.textContent = state.batch.length ? `${state.batchIndex + 1} / ${state.batch.length}` : "0 / 0"; els.batchName.textContent = item ? item.fileName : "----"; els.batchSourceSize.textContent = item ? `${item.width} × ${item.height} px` : "----"; }
   async function loadSingle(e) { try { const file = e.target.files && e.target.files[0]; const d = await window.ImageLoader.loadFromFile(file); revokeImageData(state.original); if (state.working !== state.original) revokeImageData(state.working); state.original = d; state.working = d; els.singleSourceName.textContent = d.fileName; els.singleFileSize.textContent = window.FileService.formatFileSize(d.fileSize); els.singleSourceSize.textContent = `${d.width} × ${d.height} px`; if (!els.singleResizeWidth.value) els.singleResizeWidth.value = d.width; if (!els.singleResizeHeight.value) els.singleResizeHeight.value = d.height; els.singleCropWidth.value = d.width; els.singleCropHeight.value = d.height; setMessage("画像を読み込みました。", true, true); updateAll(); } catch (err) { setMessage(err.message || "画像の読み込みに失敗しました。"); } }
   async function loadBatch(e) { try { const nextBatch = []; for (const f of Array.from(e.target.files || [])) nextBatch.push(await window.ImageLoader.loadFromFile(f)); revokeBatch(state.batch); state.batch = nextBatch; state.batchIndex = 0; setMessage(`${state.batch.length}枚の画像を読み込みました。`, true, true); updateAll(); } catch (err) { setMessage(err.message || "画像の読み込みに失敗しました。"); } }
-  async function saveSingle(continueOnly) { if (!state.working) { setMessage("画像が選択されていません。"); return; } const busyItems = [{ el: els.singleSaveButton, text: continueOnly ? null : "保存中..." }, { el: els.continueButton, text: continueOnly ? "変換中..." : null }, els.resetOriginalButton, els.imageInput]; setGroupBusy(busyItems, true); try { const oldWorking = state.working, opts = singleOpts(), blob = await window.ResizeService.convert(opts); if (continueOnly) { const nextName = state.single.mode === "crop" ? window.FileService.makeCroppedFileName(state.working.fileName, opts.width, opts.height, state.common.format) : window.FileService.makeResizedFileName(state.working.fileName, opts.width, opts.height, state.common.format); const img = await window.ImageLoader.loadFromBlob(blob, nextName); state.working = img; if (oldWorking !== state.original) revokeImageData(oldWorking); els.singleSourceSize.textContent = `${img.width} × ${img.height} px`; els.singleSourceName.textContent = img.fileName; setMessage("現在の結果を作業中画像にしました。", true, true); } else { window.FileService.downloadBlob(blob, state.single.mode === "crop" ? window.FileService.makeCroppedFileName(state.working.fileName, opts.width, opts.height, state.common.format) : window.FileService.makeResizedFileName(state.working.fileName, opts.width, opts.height, state.common.format)); setMessage("保存しました。ブラウザのダウンロード先をご確認ください。", true, true); } updateAll(); } catch (err) { setMessage(err.message || "保存に失敗しました。もう一度お試しください。"); } finally { setGroupBusy(busyItems, false); } }
-  async function saveBatch(zip) { if (!state.batch.length) { setMessage("画像が選択されていません。"); return; } if (zip && state.batch.length > ZIP_LIMIT) { setMessage("ZIP保存は最大30枚までです。"); return; } if (!zip && state.batch.length > MULTI_LIMIT) { setMessage("連続ダウンロードは最大10枚までです。枚数が多い場合はZIP保存を使ってください。"); return; } const busyItems = [{ el: els.zipButton, text: zip ? "ZIP作成中..." : null }, { el: els.multiDownloadButton, text: zip ? null : "保存中..." }, els.batchPrev, els.batchNext, els.batchInput]; setGroupBusy(busyItems, true); try { if (zip) { const z = new JSZip(); for (const item of state.batch) { const o = batchOpts(item), blob = await window.ResizeService.convert(o); z.file(fileNameForMode(item.fileName, o.width, o.height), blob); } const date = new Date().toISOString().slice(0,10).replace(/-/g, ""); window.FileService.downloadBlob(await z.generateAsync({ type: "blob" }), `converted_images_${date}.zip`); } else { for (let i = 0; i < state.batch.length; i += 1) { const item = state.batch[i], o = batchOpts(item); window.FileService.downloadBlob(await window.ResizeService.convert(o), fileNameForMode(item.fileName, o.width, o.height)); if (i < state.batch.length - 1) await new Promise((r) => setTimeout(r, MULTI_DOWNLOAD_INTERVAL_MS)); } } setMessage(zip ? "ZIPを保存しました。ブラウザのダウンロード先をご確認ください。" : "連続ダウンロードを開始しました。ブラウザのダウンロード先をご確認ください。", true, true); } catch (err) { setMessage(zip ? "ZIP保存に失敗しました。枚数を減らして再度お試しください。" : (err.message || "保存に失敗しました。もう一度お試しください。")); } finally { setGroupBusy(busyItems, false); } }
+  async function saveSingle(continueOnly) {
+    if (!state.working) { setMessage("画像が選択されていません。"); return; }
+    const busyItems = [{ el: els.singleSaveButton, text: continueOnly ? null : "保存中..." }, { el: els.continueButton, text: continueOnly ? "変換中..." : null }, els.resetOriginalButton, els.imageInput].concat(controlsIn(els.singlePanel, "input, select, button").filter((el) => ![els.singleSaveButton, els.continueButton, els.resetOriginalButton, els.imageInput].includes(el)));
+    setGroupBusy(busyItems, true);
+    try {
+      setMessage(continueOnly ? "変換中..." : "保存用画像を変換中...");
+      await yieldToBrowser();
+      const oldWorking = state.working, opts = singleOpts(), blob = await window.ResizeService.convert(opts);
+      await yieldToBrowser();
+      if (continueOnly) {
+        const nextName = state.single.mode === "crop" ? window.FileService.makeCroppedFileName(state.working.fileName, opts.width, opts.height, state.common.format) : window.FileService.makeResizedFileName(state.working.fileName, opts.width, opts.height, state.common.format);
+        const img = await window.ImageLoader.loadFromBlob(blob, nextName);
+        await yieldToBrowser();
+        state.working = img;
+        if (oldWorking !== state.original) revokeImageData(oldWorking);
+        els.singleSourceSize.textContent = `${img.width} × ${img.height} px`;
+        els.singleSourceName.textContent = img.fileName;
+        setMessage("現在の結果を作業中画像にしました。", true, true);
+      } else {
+        window.FileService.downloadBlob(blob, state.single.mode === "crop" ? window.FileService.makeCroppedFileName(state.working.fileName, opts.width, opts.height, state.common.format) : window.FileService.makeResizedFileName(state.working.fileName, opts.width, opts.height, state.common.format));
+        await yieldToBrowser();
+        setMessage("保存しました。ブラウザのダウンロード先をご確認ください。", true, true);
+      }
+      updateAll();
+    } catch (err) { setMessage(err.message || "保存に失敗しました。もう一度お試しください。"); } finally { setGroupBusy(busyItems, false); }
+  }
+  async function saveBatch(zip) {
+    if (!state.batch.length) { setMessage("画像が選択されていません。"); return; }
+    if (zip && state.batch.length > ZIP_LIMIT) { setMessage("ZIP保存は最大30枚までです。"); return; }
+    if (!zip && state.batch.length > MULTI_LIMIT) { setMessage("連続ダウンロードは最大10枚までです。枚数が多い場合はZIP保存を使ってください。"); return; }
+    const total = state.batch.length;
+    const busyItems = [{ el: els.zipButton, text: zip ? "ZIP作成中..." : null }, { el: els.multiDownloadButton, text: zip ? null : "保存中..." }, els.batchPrev, els.batchNext, els.batchInput].concat(controlsIn(els.batchPanel, "input, select, button").filter((el) => ![els.zipButton, els.multiDownloadButton, els.batchPrev, els.batchNext, els.batchInput].includes(el)));
+    setGroupBusy(busyItems, true);
+    try {
+      if (zip) {
+        const z = new JSZip();
+        for (let i = 0; i < total; i += 1) {
+          const item = state.batch[i], o = batchOpts(item);
+          setMessage(`変換中... ${i + 1} / ${total}`);
+          await yieldToBrowser();
+          const blob = await window.ResizeService.convert(o);
+          await yieldToBrowser();
+          setMessage(`ZIP作成中... ${i + 1} / ${total}`);
+          z.file(fileNameForMode(item.fileName, o.width, o.height), blob);
+          await yieldToBrowser();
+        }
+        const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
+        setMessage(`ZIP作成中... ${total} / ${total}`);
+        await yieldToBrowser();
+        const zipBlob = await z.generateAsync({ type: "blob" }, (metadata) => {
+          if (metadata.percent) setMessage(`ZIP作成中... ${total} / ${total} (${Math.floor(metadata.percent)}%)`);
+        });
+        await yieldToBrowser();
+        window.FileService.downloadBlob(zipBlob, `converted_images_${date}.zip`);
+      } else {
+        for (let i = 0; i < total; i += 1) {
+          const item = state.batch[i], o = batchOpts(item);
+          setMessage(`変換中... ${i + 1} / ${total}`);
+          await yieldToBrowser();
+          const blob = await window.ResizeService.convert(o);
+          await yieldToBrowser();
+          setMessage(`連続ダウンロード中... ${i + 1} / ${total}`);
+          window.FileService.downloadBlob(blob, fileNameForMode(item.fileName, o.width, o.height));
+          await yieldToBrowser();
+          if (i < total - 1) await new Promise((r) => setTimeout(r, MULTI_DOWNLOAD_INTERVAL_MS));
+        }
+      }
+      setMessage(zip ? "ZIPを保存しました。ブラウザのダウンロード先をご確認ください。" : "連続ダウンロードが完了しました。ブラウザのダウンロード先をご確認ください。", true, true);
+    } catch (err) { setMessage(zip ? "ZIP保存に失敗しました。枚数を減らして再度お試しください。" : (err.message || "保存に失敗しました。もう一度お試しください。")); } finally { setGroupBusy(busyItems, false); }
+  }
+  function showUpdateNotice() {
+    let notice = $("swUpdateNotice");
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.id = "swUpdateNotice";
+      notice.className = "update-notice";
+      notice.setAttribute("role", "status");
+      const text = document.createElement("span");
+      text.textContent = "新しいバージョンがあります。";
+      const reload = document.createElement("button");
+      reload.type = "button";
+      reload.textContent = "更新する";
+      reload.addEventListener("click", () => location.reload());
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "update-notice-close";
+      close.textContent = "あとで";
+      close.addEventListener("click", () => notice.remove());
+      notice.append(text, reload, close);
+      document.body.appendChild(notice);
+    }
+    notice.classList.add("show");
+  }
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("./service-worker.js").then((registration) => {
+      registration.addEventListener("updatefound", () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) showUpdateNotice();
+        });
+      });
+    }).catch(console.warn);
+  }
   function saveSettings() { window.SettingsService.saveAll({ commonSettings: state.common, singleSettings: state.single, batchSettings: state.batchSettings }); }
   function dragScaleForAxes(axes) { const rect = els.singlePreview.getBoundingClientRect(); const s = currentSingleSize(); const iw = state.working ? state.working.width : s.width, ih = state.working ? state.working.height : s.height; const opts = { width: s.width || 1, height: s.height || 1, x: state.single.x, y: state.single.y }; const op = state.single.mode === "resize" ? opFromResize(state.single.resizeMethod) : "crop"; let xRange = 0, yRange = 0; if (op === "resize-cover") { const r = window.ResizeService.coverRect(iw, ih, opts.width, opts.height, 0.5, 0.5); xRange = Math.max(0, iw - r.sw); yRange = Math.max(0, ih - r.sh); } else if (op === "resize-contain") { const r = window.ResizeService.containRect(iw, ih, opts.width, opts.height, 0.5, 0.5); xRange = Math.max(0, opts.width - r.dw); yRange = Math.max(0, opts.height - r.dh); } else if (op === "crop") { xRange = Math.abs(iw - opts.width); yRange = Math.abs(ih - opts.height); } return { x: axes.x ? Math.max(80, rect.width * (xRange ? 1 : 0.5)) : Infinity, y: axes.y ? Math.max(80, rect.height * (yRange ? 1 : 0.5)) : Infinity }; }
   function bindDrag(canvas, batch) { let dragging = false, lastX = 0, lastY = 0, pointerId = null; const finish = () => { if (!dragging) return; dragging = false; canvas.classList.remove("dragging"); if (pointerId !== null && canvas.hasPointerCapture && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId); pointerId = null; saveSettings(); }; canvas.addEventListener("pointerdown", (e) => { if (batch) return; const s = currentSingleSize(); const axes = positionAxes(state.single.mode, state.single.resizeMethod, state.working, s.width || 1, s.height || 1); if (!axes.x && !axes.y) return; dragging = true; pointerId = e.pointerId; lastX = e.clientX; lastY = e.clientY; canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId); e.preventDefault(); }); canvas.addEventListener("pointermove", (e) => { if (!dragging || e.pointerId !== pointerId) return; const target = state.single, s = currentSingleSize(), axes = positionAxes(state.single.mode, state.single.resizeMethod, state.working, s.width || 1, s.height || 1); if (!axes.x && !axes.y) { finish(); return; } const scale = dragScaleForAxes(axes); if (axes.x) target.x = clamp01(target.x + (e.clientX - lastX) / scale.x); if (axes.y) target.y = clamp01(target.y + (e.clientY - lastY) / scale.y); lastX = e.clientX; lastY = e.clientY; updateAll(); canvas.classList.add("dragging"); e.preventDefault(); }); ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) => canvas.addEventListener(type, finish)); }
   function init() { const saved = window.SettingsService.loadAll(); Object.assign(state.common, saved.commonSettings); Object.assign(state.single, saved.singleSettings); Object.assign(state.batchSettings, saved.batchSettings); els.singleResizeWidth.value = state.single.width; els.singleResizeHeight.value = state.single.height; els.batchWidth.value = state.batchSettings.width; els.batchHeight.value = state.batchSettings.height; renderRadioList(els.singleResizeMethod, "singleResizeMethod", resizeMethods, state.single.resizeMethod); renderRadioList(els.batchResizeMethod, "batchResizeMethod", batchMethods, state.batchSettings.resizeMethod); els.cropRatio.textContent = ""; [{ id: "none", label: "縦横比指定なし", description: "自由入力" }].concat(window.PresetService.CROP_RATIO_PRESETS).forEach((p) => { const o = document.createElement("option"); o.value = p.id; o.textContent = `${p.label} - ${p.description}`; els.cropRatio.appendChild(o); }); els.cropRatio.value = state.single.cropRatio; renderPresetGroups(els.batchPresets, window.PresetService.OUTPUT_PRESETS); commonHtml(els.commonSaveSingle); commonHtml(els.commonSaveBatch); setRadio("singleMode", state.single.mode); setRadio("batchMode", state.batchSettings.mode);
-    els.singleTab.addEventListener("click", () => { state.top = "single"; els.singlePanel.classList.remove("hidden"); els.batchPanel.classList.add("hidden"); els.singleTab.classList.add("active"); els.batchTab.classList.remove("active"); }); els.batchTab.addEventListener("click", () => { state.top = "batch"; els.batchPanel.classList.remove("hidden"); els.singlePanel.classList.add("hidden"); els.batchTab.classList.add("active"); els.singleTab.classList.remove("active"); }); els.imageInput.addEventListener("change", loadSingle); els.batchInput.addEventListener("change", loadBatch); bindDrag(els.singlePreview, false); [els.singleResizeWidth, els.singleResizeHeight].forEach((el, i) => el.addEventListener("input", () => { syncAspect(i ? "h" : "w"); updateAll(); })); [els.singleMiniWidth, els.singleMiniHeight].forEach((el, i) => el.addEventListener("input", () => { const target = state.single.mode === "resize" ? [els.singleResizeWidth, els.singleResizeHeight] : [els.singleCropWidth, els.singleCropHeight]; target[i].value = el.value; if (state.single.mode === "resize") syncAspect(i ? "h" : "w"); else syncCrop(i ? "h" : "w"); updateAll(); })); [els.singleCropWidth, els.singleCropHeight].forEach((el, i) => el.addEventListener("input", () => { syncCrop(i ? "h" : "w"); updateAll(); })); [els.cropDirection, els.cropRatio].forEach((el) => el.addEventListener("change", () => { state.single.cropDirection = els.cropDirection.value; state.single.cropRatio = els.cropRatio.value; syncCrop("w"); updateAll(); })); [els.batchWidth, els.batchHeight].forEach((el) => el.addEventListener("input", updateAll)); document.addEventListener("change", (e) => { if (e.target.name === "singleMode" || e.target.name === "singleResizeMethod" || e.target.name === "batchMode" || e.target.name === "batchResizeMethod") updateAll(); }); [els.singleQuickPresets, els.singleDetailPresets, els.singleCropPresets, els.batchPresets, els.singleMiniPresets].forEach((c) => c.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; const w = b.dataset.width, h = b.dataset.height; if (c === els.batchPresets) { els.batchWidth.value = w; els.batchHeight.value = h; } else if (c === els.singleCropPresets || (c === els.singleMiniPresets && state.single.mode === "crop")) { els.singleCropWidth.value = w; els.singleCropHeight.value = h; syncCrop("w"); } else { els.singleResizeWidth.value = w; els.singleResizeHeight.value = h; syncAspect("w"); } syncMiniFromMain(); updateAll(); })); els.singleSaveButton.addEventListener("click", () => saveSingle(false)); els.continueButton.addEventListener("click", () => saveSingle(true)); els.resetOriginalButton.addEventListener("click", () => { if (state.original) { if (state.working !== state.original) revokeImageData(state.working); state.working = state.original; els.singleSourceName.textContent = state.original.fileName; els.singleSourceSize.textContent = `${state.original.width} × ${state.original.height} px`; setMessage("元画像に戻しました。", true, true); updateAll(); } }); els.batchPrev.addEventListener("click", () => { if (state.batch.length) { state.batchIndex = (state.batchIndex + state.batch.length - 1) % state.batch.length; updateAll(); } }); els.batchNext.addEventListener("click", () => { if (state.batch.length) { state.batchIndex = (state.batchIndex + 1) % state.batch.length; updateAll(); } }); els.zipButton.addEventListener("click", () => saveBatch(true)); els.multiDownloadButton.addEventListener("click", () => saveBatch(false)); if ("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(console.warn); updateAll(); }
+    els.singleTab.addEventListener("click", () => { state.top = "single"; els.singlePanel.classList.remove("hidden"); els.batchPanel.classList.add("hidden"); els.singleTab.classList.add("active"); els.batchTab.classList.remove("active"); }); els.batchTab.addEventListener("click", () => { state.top = "batch"; els.batchPanel.classList.remove("hidden"); els.singlePanel.classList.add("hidden"); els.batchTab.classList.add("active"); els.singleTab.classList.remove("active"); }); els.imageInput.addEventListener("change", loadSingle); els.batchInput.addEventListener("change", loadBatch); bindDrag(els.singlePreview, false); [els.singleResizeWidth, els.singleResizeHeight].forEach((el, i) => el.addEventListener("input", () => { syncAspect(i ? "h" : "w"); updateAll(); })); [els.singleMiniWidth, els.singleMiniHeight].forEach((el, i) => el.addEventListener("input", () => { const target = state.single.mode === "resize" ? [els.singleResizeWidth, els.singleResizeHeight] : [els.singleCropWidth, els.singleCropHeight]; target[i].value = el.value; if (state.single.mode === "resize") syncAspect(i ? "h" : "w"); else syncCrop(i ? "h" : "w"); updateAll(); })); [els.singleCropWidth, els.singleCropHeight].forEach((el, i) => el.addEventListener("input", () => { syncCrop(i ? "h" : "w"); updateAll(); })); [els.cropDirection, els.cropRatio].forEach((el) => el.addEventListener("change", () => { state.single.cropDirection = els.cropDirection.value; state.single.cropRatio = els.cropRatio.value; syncCrop("w"); updateAll(); })); [els.batchWidth, els.batchHeight].forEach((el) => el.addEventListener("input", updateAll)); document.addEventListener("change", (e) => { if (e.target.name === "singleMode" || e.target.name === "singleResizeMethod" || e.target.name === "batchMode" || e.target.name === "batchResizeMethod") updateAll(); }); [els.singleQuickPresets, els.singleDetailPresets, els.singleCropPresets, els.batchPresets, els.singleMiniPresets].forEach((c) => c.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; const w = b.dataset.width, h = b.dataset.height; if (c === els.batchPresets) { els.batchWidth.value = w; els.batchHeight.value = h; } else if (c === els.singleCropPresets || (c === els.singleMiniPresets && state.single.mode === "crop")) { els.singleCropWidth.value = w; els.singleCropHeight.value = h; syncCrop("w"); } else { els.singleResizeWidth.value = w; els.singleResizeHeight.value = h; syncAspect("w"); } syncMiniFromMain(); updateAll(); })); els.singleSaveButton.addEventListener("click", () => saveSingle(false)); els.continueButton.addEventListener("click", () => saveSingle(true)); els.resetOriginalButton.addEventListener("click", () => { if (state.original) { if (state.working !== state.original) revokeImageData(state.working); state.working = state.original; els.singleSourceName.textContent = state.original.fileName; els.singleSourceSize.textContent = `${state.original.width} × ${state.original.height} px`; setMessage("元画像に戻しました。", true, true); updateAll(); } }); els.batchPrev.addEventListener("click", () => { if (state.batch.length) { state.batchIndex = (state.batchIndex + state.batch.length - 1) % state.batch.length; updateAll(); } }); els.batchNext.addEventListener("click", () => { if (state.batch.length) { state.batchIndex = (state.batchIndex + 1) % state.batch.length; updateAll(); } }); els.zipButton.addEventListener("click", () => saveBatch(true)); els.multiDownloadButton.addEventListener("click", () => saveBatch(false)); registerServiceWorker(); updateAll(); }
   init();
 })();
