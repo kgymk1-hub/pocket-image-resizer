@@ -7,22 +7,30 @@
   const state = { top: "single", original: null, working: null, batch: [], batchIndex: 0, common: { format: "png", quality: 0.85, backgroundColor: "transparent" }, single: { mode: "resize", resizeMethod: "aspect", width: 512, height: 512, cropDirection: "both", cropRatio: "none", x: 0.5, y: 0.5 }, batchSettings: { mode: "resize", resizeMethod: "stretch", width: 512, height: 512, x: 0.5, y: 0.5 } };
   const resizeMethods = [{ v: "aspect", t: "元画像の縦横比を使用" }, { v: "stretch", t: "変形" }, { v: "cover", t: "トリミング" }, { v: "contain", t: "余白付与" }];
   const batchMethods = resizeMethods.slice(1);
-  let messageTimer = null;
+  let messageTimer = null, lastMessageText = "";
   const yieldToBrowser = () => new Promise((resolve) => {
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
     else setTimeout(resolve, 0);
   });
   function setMessage(t, ok, autoClear) {
+    const nextText = t || "";
     if (messageTimer) { clearTimeout(messageTimer); messageTimer = null; }
-    message.textContent = t || "";
+    if (message.textContent !== nextText) {
+      message.textContent = nextText;
+      lastMessageText = nextText;
+    }
     message.classList.toggle("ok", Boolean(ok));
     if (autoClear) {
       messageTimer = setTimeout(() => {
         message.textContent = "";
         message.classList.remove("ok");
         messageTimer = null;
+        lastMessageText = "";
       }, 3000);
     }
+  }
+  function setProgressMessage(text) {
+    if (text !== lastMessageText) setMessage(text);
   }
   function radio(name, fallback) { const e = document.querySelector(`input[name="${name}"]:checked`); return e ? e.value : fallback; }
   function setRadio(name, value) { const e = document.querySelector(`input[name="${name}"][value="${value}"]`); if (e) e.checked = true; }
@@ -155,23 +163,23 @@
         const z = new JSZip();
         for (let i = 0; i < total; i += 1) {
           const item = state.batch[i], o = batchOpts(item);
-          setMessage(`変換中... ${i + 1} / ${total}`);
+          setProgressMessage(`変換中... ${i + 1} / ${total}`);
           await yieldToBrowser();
           const blob = await window.ResizeService.convert(o);
           await yieldToBrowser();
-          setMessage(`ZIP作成中... ${i + 1} / ${total}`);
+          setProgressMessage(`ZIP作成中... ${i + 1} / ${total}`);
           z.file(fileNameForMode(item.fileName, o.width, o.height), blob);
           await yieldToBrowser();
         }
         const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
-        setMessage(`ZIP作成中... ${total} / ${total}`);
+        setProgressMessage(`ZIP作成中... ${total} / ${total}`);
         await yieldToBrowser();
         let lastZipPercent = -1;
         const zipBlob = await z.generateAsync({ type: "blob" }, (metadata) => {
           const percent = Math.floor(Math.max(0, Math.min(100, metadata.percent || 0)));
           if (percent !== lastZipPercent) {
             lastZipPercent = percent;
-            setMessage(`ZIP作成中... ${total} / ${total} (${percent}%)`);
+            setProgressMessage(`ZIP作成中... ${total} / ${total} (${percent}%)`);
           }
         });
         await yieldToBrowser();
@@ -179,11 +187,11 @@
       } else {
         for (let i = 0; i < total; i += 1) {
           const item = state.batch[i], o = batchOpts(item);
-          setMessage(`変換中... ${i + 1} / ${total}`);
+          setProgressMessage(`変換中... ${i + 1} / ${total}`);
           await yieldToBrowser();
           const blob = await window.ResizeService.convert(o);
           await yieldToBrowser();
-          setMessage(`連続ダウンロード中... ${i + 1} / ${total}`);
+          setProgressMessage(`連続ダウンロード中... ${i + 1} / ${total}`);
           window.FileService.downloadBlob(blob, fileNameForMode(item.fileName, o.width, o.height));
           await yieldToBrowser();
           if (i < total - 1) await new Promise((r) => setTimeout(r, MULTI_DOWNLOAD_INTERVAL_MS));
